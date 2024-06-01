@@ -173,8 +173,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Padding:
-    m_Left: 5
-    m_Right: 5
+    m_Left: 0
+    m_Right: 0
     m_Top: 0
     m_Bottom: 10
   m_ChildAlignment: 0
@@ -397,7 +397,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   contentTransform: {fileID: 281258795}
   sectionGroupPrefab: {fileID: 8489922708881548104, guid: 446073487899ab14ebf49baa4840406c, type: 3}
-  sectionPrefab: {fileID: 2283127227990880234, guid: ebf7385ae5e88d943b316be1b7efb1e4, type: 3}
+  infoSection: {fileID: 7995801619390940528, guid: 531c3455d12d64c4192a80729c09a620, type: 3}
+  buttonSectionPrefab: {fileID: 2283127227990880234, guid: ebf7385ae5e88d943b316be1b7efb1e4, type: 3}
   inputBlockPrefab: {fileID: 4282228287318408552, guid: fa0345a41a0ce4348be342230edfb101, type: 3}
 --- !u!1 &554082726
 GameObject:

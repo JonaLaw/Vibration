@@ -12,14 +12,16 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using GoodVibrations;
+using AndroidVibration;
 
 public class VibrationExample : MonoBehaviour
 {
     public Transform contentTransform;
-    public GameObject sectionGroupPrefab, sectionPrefab, inputBlockPrefab;
+    public GameObject sectionGroupPrefab, infoSection, buttonSectionPrefab, inputBlockPrefab;
 
     private static Transform contentTransformStatic;
-    private static GameObject sectionGroupPrefabStatic, sectionPrefabStatic, inputBlockPrefabStatic;
+    private static GameObject sectionGroupPrefabStatic, infoSectionStatic, buttonSectionPrefabStatic, inputBlockPrefabStatic;
     private static List<Transform> listTransforms;
 
     private enum SupportType
@@ -32,11 +34,12 @@ public class VibrationExample : MonoBehaviour
 
     void Awake()
     {
-        Vibration.Init();
+        GoodVibrations.Vibration.Init();
 
         contentTransformStatic = contentTransform;
         sectionGroupPrefabStatic = sectionGroupPrefab;
-        sectionPrefabStatic = sectionPrefab;
+        infoSectionStatic = infoSection;
+        buttonSectionPrefabStatic = buttonSectionPrefab;
         inputBlockPrefabStatic = inputBlockPrefab;
 
         listTransforms = new List<Transform>(15);
@@ -44,13 +47,14 @@ public class VibrationExample : MonoBehaviour
 
     void Start()
     {
+        VibrationLogging.DebugLogLevel = VibrationLogging.LogLevel.All;
         AddDeviceInfo();
-        AddBasicVibration();
+        AddUniversalVibration();
 #if UNITY_IOS || UNITY_EDITOR
         AddiOSImpactFeedbackStyles();
         AddiOSNotificationFeedbackStyles();
 #endif
-#if UNITY_ANDROID || UNITY_EDITOR                              
+#if UNITY_ANDROID || UNITY_EDITOR
         AddAndroidInfo();
         AddAndroidBasicVibrations();
         AddAndroidHaptics();
@@ -79,33 +83,33 @@ public class VibrationExample : MonoBehaviour
         newGroup.AddSection(new Section(newGroup, $"Platform: {Application.platform}"));
         // this one is to check how ofen SystemInfo is accurate
         newGroup.AddSection(new Section(newGroup, $"Supports Vibration: {SystemInfo.supportsVibration}"));
-        newGroup.AddSection(new Section(newGroup, $"Can Vibrate: {Vibration.CanVibrate}"));
+        newGroup.AddSection(new Section(newGroup, $"Can Vibrate: {GoodVibrations.Vibration.CanVibrate}"));
     }
 
-    private void AddBasicVibration()
+    private void AddUniversalVibration()
     {
-        SupportType support = Vibration.CanVibrate ? SupportType.Yes : SupportType.No;
-        SectionGroup newGroup = new("Basic Vibraiton");
+        SupportType support = GoodVibrations.Vibration.CanVibrate ? SupportType.Yes : SupportType.No;
+        SectionGroup newGroup = new("Universal Vibraitons");
 
-        newGroup.AddSection(new ButtonSection(newGroup, "Vibrate", delegate { Vibration.Vibrate(); }, support));
-        newGroup.AddSection(new ButtonSection(newGroup, "Vibrate Pop", delegate { Vibration.VibratePop(); }, support));
-        newGroup.AddSection(new ButtonSection(newGroup, "Vibrate Peek", delegate { Vibration.VibratePeek(); }, support));
-        newGroup.AddSection(new ButtonSection(newGroup, "Vibrate Nope", delegate { Vibration.VibrateNope(); }, support));
+        newGroup.AddSection(new ButtonSection(newGroup, "Vibrate", delegate { GoodVibrations.Vibration.Vibrate(); }, support));
+        newGroup.AddSection(new ButtonSection(newGroup, "Vibrate Pop", delegate { GoodVibrations.Vibration.VibratePop(); }, support));
+        newGroup.AddSection(new ButtonSection(newGroup, "Vibrate Peek", delegate { GoodVibrations.Vibration.VibratePeek(); }, support));
+        newGroup.AddSection(new ButtonSection(newGroup, "Vibrate Nope", delegate { GoodVibrations.Vibration.VibrateNope(); }, support));
 
         if (Application.platform == RuntimePlatform.IPhonePlayer)
             support = SupportType.No;
 
         InputSection vibrateSection = new(newGroup, "Vibrate Duration", 1);
-        vibrateSection.AddInput("Duration (ms)", "Input Duration", InputField.ContentType.IntegerNumber, false);
+        vibrateSection.AddInput("Duration (ms)", "Input Duration", support, InputField.ContentType.IntegerNumber, false);
         vibrateSection.SetupButton(delegate { ButtonVibrateDuration(vibrateSection); }, support);
         newGroup.AddSection(vibrateSection);
 
         InputSection vibratePatternSection = new(newGroup, "Vibrate Pattern", 1);
-        vibratePatternSection.AddInput("Durations (ms) On-Off-On...", "Input Durations", InputField.ContentType.Custom, false, "200, 100, 200");
+        vibratePatternSection.AddInput("Durations (ms) On-Off-On...", "Input Durations", support, InputField.ContentType.Standard, false, "200, 500, 200");
         vibratePatternSection.SetupButton(delegate { ButtonVibratePattern(vibratePatternSection); }, support);
         newGroup.AddSection(vibratePatternSection);
 
-        newGroup.AddSection(new ButtonSection(newGroup, "Vibration Cancel", delegate { Vibration.VibrateCancel(); }, support));
+        newGroup.AddSection(new ButtonSection(newGroup, "Vibration Cancel", delegate { GoodVibrations.Vibration.VibrateCancel(); }, support));
     }
 
     private void AddiOSImpactFeedbackStyles()
@@ -133,103 +137,136 @@ public class VibrationExample : MonoBehaviour
     private void AddAndroidInfo()
     {
         SectionGroup newGroup = new("Android Info");
-        newGroup.AddSection(new Section(newGroup, $"API Version: {VibrationAndroid.AndroidVersion}"));
-        newGroup.AddSection(new Section(newGroup, $"Has Vibrator: {VibrationAndroid.CanVibrate}"));
-        newGroup.AddSection(new Section(newGroup, $"Haptic Feedback: {VibrationAndroid.SupportsHapticFeedback}"));
-        newGroup.AddSection(new Section(newGroup, $"Vibration Effects: {VibrationAndroid.SupportsVibrationEffect}"));
-        newGroup.AddSection(new Section(newGroup, $"Predefined Effects: {VibrationAndroid.SupportsPredefinedEffect}"));
-        newGroup.AddSection(new Section(newGroup, $"Amplitude Control: {VibrationAndroid.SupportsAmplitudeControl}"));
-        newGroup.AddSection(new Section(newGroup, $"Composition Effects: {VibrationAndroid.SupportsComposition}"));
+        newGroup.AddSection(new Section(newGroup, $"API Version: {AndroidVibration.Vibration.AndroidVersion}"));
+        newGroup.AddSection(new Section(newGroup, $"Has Vibrator: {AndroidVibration.Vibration.CanVibrate}"));
+        newGroup.AddSection(new Section(newGroup, $"Haptic Feedback: {HapticFeedback.Supported}"));
+        newGroup.AddSection(new Section(newGroup, $"Haptic Status: {HapticFeedback.HapticStatus}"));
+        newGroup.AddSection(new Section(newGroup, $"Vibration Effects: {VibrationEffect.Supported}"));
+        newGroup.AddSection(new Section(newGroup, $"Predefined Effects: {VibrationEffect.SupportsPredefined}"));
+        newGroup.AddSection(new Section(newGroup, $"Amplitude Control: {VibrationEffect.SupportsAmplitudeControl}"));
+        newGroup.AddSection(new Section(newGroup, $"Composition Effects: {VibrationComposition.Supported}"));
+        //newGroup.AddSection(new ButtonSection(newGroup, "Android Log Support", delegate { AndroidVibration.Vibration.LogSupport(); }, SupportType.Yes));
     }
 
     private void AddAndroidBasicVibrations()
     {
         SectionGroup newGroup = new("Android Vibration");
 
-        SupportType support;
-        if (!VibrationAndroid.CanVibrate)
-            support = SupportType.No;
-        else if (VibrationAndroid.SupportsAmplitudeControl)
-            support = SupportType.Limited;
-        else support = SupportType.Yes;
+        SupportType support = AndroidVibration.Vibration.CanVibrate ? SupportType.Yes : SupportType.No;
+        SupportType amplitudeSupport = VibrationEffect.SupportsAmplitudeControl ? SupportType.Yes : SupportType.No;
+        SupportType buttonSupport = SupportType.Yes;
+        if (!AndroidVibration.Vibration.CanVibrate)
+            buttonSupport = SupportType.No;
+        else if (!VibrationEffect.SupportsAmplitudeControl)
+            buttonSupport = SupportType.Limited;
 
-        InputSection vibrateSection = new(newGroup, "Vibrate Custom", 2);
-        vibrateSection.AddInput("Duration (ms)", "Input Duration", InputField.ContentType.IntegerNumber, false);
-        vibrateSection.AddInput("Amplitude: Empty | -1 (default) / 0 to 255", "Input Amplitude (optional)", InputField.ContentType.IntegerNumber, true);
-        vibrateSection.SetupButton(delegate { ButtonAndroidVibrate(vibrateSection); }, support);
+        InputSection vibrateSection = new(newGroup, "Vibrate Standard", 2);
+        vibrateSection.AddInput("Duration (ms)", "Input Duration", support, InputField.ContentType.IntegerNumber, false);
+        vibrateSection.AddInput("Amplitude: Empty | -1 (default) / 0 to 255", "Input Amplitude (optional)", amplitudeSupport, InputField.ContentType.IntegerNumber, true);
+        vibrateSection.SetupButton(delegate { ButtonAndroidVibrate(vibrateSection); }, buttonSupport);
         newGroup.AddSection(vibrateSection);
 
         InputSection vibratePatternSection = new(newGroup, "Vibrate Pattern", 3);
-        vibratePatternSection.AddInput("Durations (ms) Off-On-Off...", "Input Durations", InputField.ContentType.Custom, false, "0, 300, 50, 200, 50, 100");
-        vibratePatternSection.AddInput("Amplitudes: Empty | -1 (default) / 0 to 255", "Input Amplitudes (optional)", InputField.ContentType.Custom, true, "0, 255, 0, 150, 0, 100");
-        vibratePatternSection.AddInput("Repeat Index: Empty | 1 to length -1", "Input Repeat Index (optional)", InputField.ContentType.IntegerNumber, true);
-        vibratePatternSection.SetupButton(delegate { ButtonAndroidVibratePattern(vibratePatternSection); }, support);
+        vibratePatternSection.AddInput("Durations (ms) Off-On-Off...", "Input Durations csv", support, InputField.ContentType.Standard, false, "0, 300, 500, 200, 500, 100");
+        vibratePatternSection.AddInput("Amplitudes: Empty | -1 (default) / 0 to 255", "Input Amplitudes csv (optional)", amplitudeSupport, InputField.ContentType.Standard, true, "0, 255, 0, 150, 0, 100");
+        vibratePatternSection.AddInput("Repeat Index: Empty | >=0", "Input index to repeat from after done (optional)", support, InputField.ContentType.IntegerNumber, true);
+        vibratePatternSection.SetupButton(delegate { ButtonAndroidVibratePattern(vibratePatternSection); }, buttonSupport);
         newGroup.AddSection(vibratePatternSection);
+
+        newGroup.AddSection(new ButtonSection(newGroup, "Vibration Cancel", delegate { AndroidVibration.Vibration.VibrateCancel(); }, support));
+
+        InputSection vibrateOldSection = new(newGroup, "Vibrate Old", 1);
+        vibrateOldSection.AddInput("Duration (ms)", "Input Duration", support, InputField.ContentType.IntegerNumber, false);
+        vibrateOldSection.SetupButton(delegate { ButtonAndroidVibrateOld(vibrateOldSection); }, support);
+        newGroup.AddSection(vibrateOldSection);
+
+        InputSection vibratePatternOldSection = new(newGroup, "Vibrate Pattern Old", 2);
+        vibratePatternOldSection.AddInput("Durations (ms) Off-On-Off...", "Input Durations csv", support, InputField.ContentType.Standard, false, "0, 300, 500, 200, 500, 100");
+        vibratePatternOldSection.AddInput("Repeat Index: Empty | >=0", "Input index to repeat from after done (optional)", support, InputField.ContentType.IntegerNumber, true);
+        vibratePatternOldSection.SetupButton(delegate { ButtonAndroidVibratePatternOld(vibratePatternOldSection); }, support);
+        newGroup.AddSection(vibratePatternOldSection);
     }
 
     private void AddAndroidHaptics()
     {
-        SupportType support = VibrationAndroid.SupportsHapticFeedback ? SupportType.Yes : SupportType.No;
         SectionGroup newGroup = new("Android Haptic Feedbacks");
-        foreach (var item in VibrationAndroid.HapticFeedbackSupport)
+        if (HapticFeedback.HapticStatus== AndroidVibration.Vibration.SupportStatus.UNKNOWN)
         {
-            newGroup.AddSection(new ButtonSection(newGroup, item.Key.ToString(),
-                delegate { VibrationAndroid.PerformHapticFeedback(item.Key); }, support)
-                );
+            newGroup.AddSection(new Section(newGroup, $"Warning: Can't tell if haptics are enabled on your device. API 33+"));
+            foreach (var item in HapticFeedback.HapticSupport)
+            {
+                newGroup.AddSection(new ButtonSection(newGroup, item.Key.ToString(),
+                    delegate { HapticFeedback.Vibrate(item.Key); },
+                    HapticFeedback.HapticSupport[item.Key] ? SupportType.Unknown : SupportType.No));
+            }
+        }
+        else
+        {
+            foreach (var item in HapticFeedback.HapticSupport)
+            {
+                newGroup.AddSection(new ButtonSection(newGroup, item.Key.ToString(),
+                    delegate { HapticFeedback.Vibrate(item.Key); },
+                    HapticFeedback.HapticSupport[item.Key] ? SupportType.Yes : SupportType.No));
+            }
         }
     }
 
     private void AddAndroidPredefinedEffects()
     {
         SectionGroup newGroup = new("Android Predefined Effects");
-        foreach (var item in VibrationAndroid.PredefinedEffectSupport)
+        foreach (var item in VibrationEffect.PredefinedSupport)
         {
             SupportType support;
-            if (item.Value == VibrationAndroid.PredefinedEffectSupports.NO)
+            if (item.Value == AndroidVibration.Vibration.SupportStatus.NO)
                 support = SupportType.No;
-            else if (item.Value == VibrationAndroid.PredefinedEffectSupports.UNKNOWN)
+            else if (item.Value == AndroidVibration.Vibration.SupportStatus.UNKNOWN)
                 support = SupportType.Unknown;
             else support = SupportType.Yes;
 
-            newGroup.AddSection(new ButtonSection(newGroup, item.Key.ToString(), delegate { VibrationAndroid.VibratePredefined(item.Key); }, support));
+            newGroup.AddSection(new ButtonSection(newGroup, item.Key.ToString(), delegate { AndroidVibration.Vibration.VibratePredefined(item.Key); }, support));
         }
     }
 
     private void AddAndroidCompositionEffects()
     {
-        SectionGroup newGroup = new("Android Composition Effects");
+        SectionGroup newGroup = new("Android Composition");
 
-        InputSection compositionSection = new(newGroup, "Vibrate Composition", 3);
-        compositionSection.AddInput("Effects", "Input Effects IDs", InputField.ContentType.Custom, false);
-        compositionSection.AddInput("Scales: Empty | -1 (default) / 0 to 1", "Input Scales (optional)", InputField.ContentType.Custom, true);
-        compositionSection.AddInput("Delays: Empty | >=0 (ms)", "Input Delays (optional)", InputField.ContentType.Custom, true);
-        newGroup.AddSection(compositionSection);
+        SupportType compositionSupport = VibrationComposition.Supported? SupportType.Yes : SupportType.No;
 
-        SupportType support;
-        bool limitedSupport = false;
-        foreach (var item in VibrationAndroid.CompositionEffectSupport)
+        SupportType primitiveSupport = SupportType.Unknown;
+        bool fullSupport = true, noSupport = true;
+        foreach (var item in VibrationComposition.PrimitiveSupport)
         {
             if (item.Value)
-            {
-                support = SupportType.Yes;
-            }
+                noSupport = false;
             else
-            {
-                support = SupportType.No;
-                limitedSupport = true;
-            }
-
-            newGroup.AddSection(new ButtonSection(newGroup, $"{(int)item.Key}: {item.Key.ToString()}",
-                delegate { VibrationAndroid.VibrateComposition(new VibrationAndroid.CompositionEffects[] { item.Key }); },
-                support));
+                fullSupport = false;
         }
+        if (fullSupport == noSupport)
+            Debug.LogError("AndroidVibration.Vibration.CompositionPrimitiveSupport is empty???");
+        else if (fullSupport)
+            primitiveSupport = SupportType.Yes;
+        else if (noSupport)
+            primitiveSupport = SupportType.No;
+        else
+            primitiveSupport = SupportType.Limited;
 
-        support = VibrationAndroid.SupportsComposition ? SupportType.Yes : SupportType.No;
-        if (limitedSupport && support == SupportType.Yes)
+        InputSection compositionSection = new(newGroup, "Vibrate Composition", 3);
+        compositionSection.AddInput("Primitives: Unsupported IDs will fail", "Input Primitve IDs (from below) csv", primitiveSupport, InputField.ContentType.Standard, false);
+        compositionSection.AddInput("Scales: Empty | -1 (default) / 0 to 1", "Input Scales csv (optional)", compositionSupport, InputField.ContentType.Standard, true);
+        compositionSection.AddInput("Delays: Empty | >=0 (ms)", "Input Delays csv (optional)", compositionSupport, InputField.ContentType.Standard, true);
+        compositionSection.SetupButton(delegate { ButtonAndroidVibrateComposition(compositionSection); }, primitiveSupport);
+        newGroup.AddSection(compositionSection);
+
+        newGroup.AddSection(new ButtonSection(newGroup, "Vibration Cancel", delegate { AndroidVibration.Vibration.VibrateCancel(); }, compositionSupport));
+
+        foreach (var item in VibrationComposition.PrimitiveSupport)
         {
-            support = SupportType.Limited;
+            primitiveSupport = item.Value ? SupportType.Yes : SupportType.No;
+            newGroup.AddSection(new ButtonSection(newGroup, $"{(int)item.Key}: {item.Key}",
+                delegate { AndroidVibration.Vibration.VibrateComposition(new VibrationComposition.Primitives[] { item.Key }); },
+                primitiveSupport));
         }
-        compositionSection.SetupButton(delegate { ButtonAndroidVibrateComposition(compositionSection); }, support);
     }
 
     private void ButtonVibrateDuration(InputSection inputSection)
@@ -238,7 +275,7 @@ public class VibrationExample : MonoBehaviour
         try
         {
             int duration = inputSection.GetInputValueAt(0);
-            Vibration.Vibrate(duration);
+            GoodVibrations.Vibration.Vibrate(duration);
         }
         catch { }
     }
@@ -249,7 +286,7 @@ public class VibrationExample : MonoBehaviour
         try
         {
             int[] durations = inputSection.GetInputValuesAt<int>(0);
-            Vibration.VibratePattern(durations);
+            GoodVibrations.Vibration.VibratePattern(durations);
         }
         catch (Exception e)
         {
@@ -264,7 +301,7 @@ public class VibrationExample : MonoBehaviour
         {
             int duration = inputSection.GetInputValueAt(0);
             int amplitude = inputSection.GetInputValueAt(1);
-            VibrationAndroid.Vibrate(duration, amplitude);
+            AndroidVibration.Vibration.Vibrate(duration, amplitude);
         }
         catch (Exception e)
         {
@@ -277,14 +314,39 @@ public class VibrationExample : MonoBehaviour
         Debug.Log("Button Android Vibrate Pattern");
         try
         {
-            int[] durations = inputSection.GetInputValuesAt<int>(0);
-            long[] durationLongs = new long[durations.Length];
-            for (int i = 0; i < durations.Length; i++)
-                durationLongs[i] = durations[i];
-
+            long[] durations = inputSection.GetInputValuesAt<long>(0);
             int[] amplitudes = inputSection.GetInputValuesAt<int>(1);
             int repeatIndex = inputSection.GetInputValueAt(2);
-            VibrationAndroid.VibratePattern(durationLongs, amplitudes, repeatIndex);
+            AndroidVibration.Vibration.VibratePattern(durations, amplitudes, repeatIndex);
+        }
+        catch (Exception e)
+        {
+            Debug.Log(e.ToString());
+        }
+    }
+
+    private void ButtonAndroidVibrateOld(InputSection inputSection)
+    {
+        Debug.Log("Button Android Vibrate Old");
+        try
+        {
+            int duration = inputSection.GetInputValueAt(0);
+            AndroidVibration.Vibration.DefaultVibrator.Vibrate(duration);
+        }
+        catch (Exception e)
+        {
+            Debug.Log(e.ToString());
+        }
+    }
+
+    private void ButtonAndroidVibratePatternOld(InputSection inputSection)
+    {
+        Debug.Log("Button Android Vibrate Pattern Old");
+        try
+        {
+            long[] durations = inputSection.GetInputValuesAt<long>(0);
+            int repeatIndex = inputSection.GetInputValueAt(1);
+            AndroidVibration.Vibration.DefaultVibrator.Vibrate(durations, repeatIndex);
         }
         catch (Exception e)
         {
@@ -298,10 +360,10 @@ public class VibrationExample : MonoBehaviour
         try
         {
             int[] effectsIDs = inputSection.GetInputValuesAt<int>(0);
-            var compositionEffects = VibrationAndroid.ConvertToEnumArray<VibrationAndroid.CompositionEffects>(effectsIDs);
+            var compositionEffects = AndroidVibration.Vibration.ConvertToEnumArray<VibrationComposition.Primitives>(effectsIDs);
             float[] scales = inputSection.GetInputValuesAt<float>(1);
             int[] delays = inputSection.GetInputValuesAt<int>(2);
-            VibrationAndroid.VibrateComposition(compositionEffects, scales, delays);
+            AndroidVibration.Vibration.VibrateComposition(compositionEffects, scales, delays);
         }
         catch (Exception e)
         {
@@ -311,33 +373,38 @@ public class VibrationExample : MonoBehaviour
 
     private class SectionGroup
     {
-        public GameObject SectionGroupObject { get; }
         public Transform ListTransform { get; }
         public List<Section> Sections { get; }
 
         public SectionGroup(string title)
         {
-            SectionGroupObject = Instantiate(sectionGroupPrefabStatic, contentTransformStatic);
-            SectionGroupObject.GetComponentInChildren<Text>().text = title;
-            ListTransform = SectionGroupObject.transform.GetChild(1);
+            GameObject sectionGroup = Instantiate(sectionGroupPrefabStatic, contentTransformStatic);
+            sectionGroup.GetComponentInChildren<Text>().text = title;
+            ListTransform = sectionGroup.transform.GetChild(1);
             listTransforms.Add(ListTransform);
             Sections = new List<Section>();
         }
 
+        // this does nothing in the end
         public void AddSection(Section section)
         {
             Sections.Add(section);
-            //section.SectionObject.transform.parent = SectionGroupObject.transform;
         }
     }
 
     private class Section
     {
-        public SectionGroup ParentGroup { get; }
         public GameObject SectionObject { get; private set; }
+
         public Section(SectionGroup group, string title)
         {
-            SectionObject = Instantiate(sectionPrefabStatic, group.ListTransform);
+            SectionObject = Instantiate(infoSectionStatic, group.ListTransform);
+            SectionObject.GetComponentInChildren<Text>().text = title;
+        }
+
+        public Section(GameObject prefab, SectionGroup group, string title)
+        {
+            SectionObject = Instantiate(prefab, group.ListTransform);
             SectionObject.GetComponentInChildren<Text>().text = title;
         }
     }
@@ -347,18 +414,17 @@ public class VibrationExample : MonoBehaviour
         private static ColorBlock unsupportedColors, unkownColors;
         private static bool initializedColors = false;
 
-        public ButtonSection(SectionGroup group, string title, UnityAction call, SupportType supportType) : base(group, title)
+        public ButtonSection(SectionGroup group, string title, UnityAction call, SupportType supportType) : base(buttonSectionPrefabStatic, group, title)
         {
             SetupButton(call, supportType);
         }
 
-        public ButtonSection(SectionGroup group, string title) : base(group, title)
+        public ButtonSection(SectionGroup group, string title) : base(buttonSectionPrefabStatic, group, title)
         { }
 
         public void SetupButton(UnityAction call, SupportType supportType)
         {
             Button button = SectionObject.GetComponentInChildren<Button>(true);
-            button.gameObject.SetActive(true);
             button.onClick.AddListener(call);
             Text buttonText = button.GetComponentInChildren<Text>();
 
@@ -379,7 +445,7 @@ public class VibrationExample : MonoBehaviour
                     break;
                 case SupportType.Limited:
                     button.colors = unkownColors;
-                    buttonText.text = "Limit";
+                    buttonText.text = "Limited";
                     break;
             }
         }
@@ -396,31 +462,40 @@ public class VibrationExample : MonoBehaviour
 
     private class InputSection : ButtonSection
     {
+        private static Color badInput = new(1, 0.78f, 0.78f),
+            goodInput = new(0.78f, 1, 0.78f);
         private readonly List<InputField> inputFields;
         private readonly List<bool> inputsCanBeEmpty;
-        private readonly List<Text> descriptions;
+        private readonly List<Image> inputBackgounds;
 
         public InputSection(SectionGroup group, string title, int numberOfInputs) : base(group, title)
         {
             inputFields = new(numberOfInputs);
             inputsCanBeEmpty = new(numberOfInputs);
-            descriptions = new(numberOfInputs);
+            inputBackgounds = new(numberOfInputs);
         }
 
-        public void AddInput(string description, string placeholder, InputField.ContentType inputType, bool inputCanbeEmpty, string input = "")
+        public void AddInput(string description, string placeholder, SupportType support, InputField.ContentType inputType, bool inputCanbeEmpty, string input = "")
         {
             GameObject section = Instantiate(inputBlockPrefabStatic, SectionObject.transform);
+
             Text[] texts = section.GetComponentsInChildren<Text>();
             texts[0].text = description;
+            texts[0].color = support switch
+            {
+                SupportType.No => Color.red,
+                SupportType.Limited => Color.yellow,
+                SupportType.Unknown => Color.magenta,
+                _ => Color.black
+            };
+
             texts[1].text = placeholder;
             InputField inputField = section.GetComponentInChildren<InputField>();
             inputField.text = input;
-            // set to custom already, shows a keypad
-            if (inputType != InputField.ContentType.Custom)
-                inputField.contentType = inputType;
+            inputField.contentType = inputType;
             inputFields.Add(inputField);
             inputsCanBeEmpty.Add(inputCanbeEmpty);
-            descriptions.Add(texts[0]);
+            inputBackgounds.Add(inputField.gameObject.GetComponent<Image>());
             return;
         }
 
@@ -434,12 +509,12 @@ public class VibrationExample : MonoBehaviour
                     value = -1;
                 else
                     value = int.Parse(input);
-                descriptions[index].color = Color.blue;
+                inputBackgounds[index].color = goodInput;
                 return value;
             }
             catch (Exception e)
             {
-                descriptions[index].color = Color.red;
+                inputBackgounds[index].color = badInput;
                 Debug.LogWarning("failed to parse the input value");
                 throw e;
             }
@@ -457,14 +532,16 @@ public class VibrationExample : MonoBehaviour
                     values = Array.ConvertAll(input.Split(','), v => (T)(object)int.Parse(v));
                 else if (typeof(T) == typeof(float))
                     values = Array.ConvertAll(input.Split(','), v => (T)(object)float.Parse(v));
+                else if (typeof(T) == typeof(long))
+                    values = Array.ConvertAll(input.Split(','), v => (T)(object)long.Parse(v));
                 else
                     throw new ArgumentException("Type T must be either int or float.");
-                descriptions[index].color = Color.blue;
+                inputBackgounds[index].color = goodInput;
                 return values;
             }
             catch (Exception e)
             {
-                descriptions[index].color = Color.red;
+                inputBackgounds[index].color = badInput;
                 Debug.LogWarning("failed to parse the input values");
                 throw e;
             }

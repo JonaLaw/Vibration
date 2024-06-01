@@ -1,104 +1,177 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+// @author Benoît Freslon @benoitfreslon
+// https://github.com/BenoitFreslon/Vibration
+// https://benoitfreslon.com
+//
+////////////////////////////////////////////////////////////////////////////////
+
+#if UNITY_IOS
 using System.Runtime.InteropServices;
+#endif
 using UnityEngine;
+using static GoodVibrations.VibrationLogging;
 
-public static class VibrationiOS
+namespace GoodVibrations
 {
-    public enum ImpactFeedbackStyle
+    public static class VibrationiOS
     {
-        Heavy,
-        Medium,
-        Light,
-        Rigid,
-        Soft
-    }
-
-    public enum NotificationFeedbackStyle
-    {
-        Error,
-        Success,
-        Warning
-    }
-
-    [DllImport("__Internal")]
-    private static extern bool _HasVibrator();
-
-    [DllImport("__Internal")]
-    private static extern void _Vibrate();
-
-    [DllImport("__Internal")]
-    private static extern void _VibratePop();
-
-    [DllImport("__Internal")]
-    private static extern void _VibratePeek();
-
-    [DllImport("__Internal")]
-    private static extern void _VibrateNope();
-
-    [DllImport("__Internal")]
-    private static extern void _impactOccurred(string style);
-
-    [DllImport("__Internal")]
-    private static extern void _notificationOccurred(string style);
-
-    [DllImport("__Internal")]
-    private static extern void _selectionChanged();
-
-    public static bool CanVibrate { get; private set; }
-    private static bool initialized = false;
-
-    public static void Init()
-    {
-        if (initialized) return;
-
-        if (Application.platform != RuntimePlatform.IPhonePlayer)
+        public enum ImpactFeedbackStyle
         {
-            initialized = true;
-            return;
+            Heavy,
+            Medium,
+            Light,
+            Rigid,
+            Soft
         }
 
-        CanVibrate = _HasVibrator();
-        initialized = true;
-    }
+        public enum NotificationFeedbackStyle
+        {
+            Error,
+            Success,
+            Warning
+        }
 
-    public static void Vibrate()
-    {
-        if (!CanVibrate) return;
-        _Vibrate();
-    }
+#if UNITY_IOS
+        [DllImport("__Internal")]
+        private static extern bool _HasVibrator();
 
-    public static void VibratePop()
-    {
-        if (!CanVibrate) return;
-        _VibratePop();
-    }
+        [DllImport("__Internal")]
+        private static extern void _Vibrate();
 
-    public static void VibratePeek()
-    {
-        if (!CanVibrate) return;
-        _VibratePeek();
-    }
+        [DllImport("__Internal")]
+        private static extern void _VibratePop();
 
-    public static void VibrateNope()
-    {
-        if (!CanVibrate) return;
-        _VibrateNope();
-    }
+        [DllImport("__Internal")]
+        private static extern void _VibratePeek();
 
-    public static void VibrateImpact(ImpactFeedbackStyle style)
-    {
-        if (!CanVibrate) return;
-        _impactOccurred(nameof(style));
-    }
+        [DllImport("__Internal")]
+        private static extern void _VibrateNope();
 
-    public static void VibrateNotification(NotificationFeedbackStyle style)
-    {
-        if (!CanVibrate) return;
-        _notificationOccurred(nameof(style));
-    }
+        [DllImport("__Internal")]
+        private static extern void _impactOccurred(string style);
 
-    public static void VibrateSelectionChanged()
-    {
-        if (!CanVibrate) return;
-        _selectionChanged();
+        [DllImport("__Internal")]
+        private static extern void _notificationOccurred(string style);
+
+        [DllImport("__Internal")]
+        private static extern void _selectionChanged();
+#endif
+
+        public static bool CanVibrate { get; private set; }
+
+        private static bool NoVibrationSupport
+        {
+            get
+            {
+                if (!CanVibrate)
+                    Log("This device has no support for Vibration", LogLevel.Warning);
+                return !CanVibrate;
+            }
+        }
+
+        private static bool initialized = false;
+
+        public static void Init()
+        {
+            if (initialized) return;
+
+            if (Application.platform != RuntimePlatform.IPhonePlayer)
+            {
+                initialized = true;
+#if !(UNITY_IOS || UNITY_EDITOR)
+                Log("The application's platform is not iOS.", LogLevel.Error);
+#endif
+                return;
+            }
+#if UNITY_IOS
+            CanVibrate = _HasVibrator();
+#endif
+            initialized = true;
+        }
+
+        public static bool Vibrate()
+        {
+            Log($"{nameof(Vibrate)} called");
+            if (NoVibrationSupport) return false;
+#if UNITY_IOS
+            _Vibrate();
+            return true;
+#else
+            return false;
+#endif
+        }
+
+        public static bool VibratePop()
+        {
+            Log($"{nameof(VibratePop)} called");
+            if (NoVibrationSupport) return false;
+#if UNITY_IOS
+            _VibratePop();
+            return true;
+#else
+            return false;
+#endif
+        }
+
+        public static bool VibratePeek()
+        {
+            Log($"{nameof(VibratePeek)} called");
+            if (NoVibrationSupport) return false;
+#if UNITY_IOS
+            _VibratePeek();
+            return true;
+#else
+            return false;
+#endif
+        }
+
+        public static bool VibrateNope()
+        {
+            Log($"{nameof(VibrateNope)} called");
+            if (NoVibrationSupport) return false;
+#if UNITY_IOS
+            _VibrateNope();
+            return true;
+#else
+            return false;
+#endif
+        }
+
+        public static bool VibrateImpact(ImpactFeedbackStyle style)
+        {
+            Log($"{nameof(VibrateImpact)} called with the given {nameof(style)}: {style}");
+            if (NoVibrationSupport) return false;
+#if UNITY_IOS
+            _impactOccurred(nameof(style));
+            return true;
+#else
+            return false;
+#endif
+        }
+
+        public static bool VibrateNotification(NotificationFeedbackStyle style)
+        {
+            Log($"{nameof(VibrateNotification)} called with the given {nameof(style)}: {style}");
+            if (NoVibrationSupport) return false;
+#if UNITY_IOS
+            _notificationOccurred(nameof(style));
+            return true;
+#else
+            return false;
+#endif
+        }
+
+        public static bool VibrateSelectionChanged()
+        {
+            Log($"{nameof(VibrateSelectionChanged)} called");
+            if (NoVibrationSupport) return false;
+#if UNITY_IOS
+            _selectionChanged();
+            return true;
+#else
+            return false;
+#endif
+        }
     }
 }

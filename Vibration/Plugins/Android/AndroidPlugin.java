@@ -1,4 +1,7 @@
-//https://github.com/CandyCoded/HapticFeedback/blob/main/Assets/Plugins/CandyCoded.HapticFeedback/Plugins/Android/AndroidPlugin.java
+// Thanks to neogeek for this code
+// https://github.com/CandyCoded/HapticFeedback/blob/main/Assets/Plugins/CandyCoded.HapticFeedback/Plugins/Android/AndroidPlugin.java
+
+package com.vibration.hapticfeedbacklibrary;
 
 import android.app.Activity;
 import android.content.Context;
@@ -14,17 +17,15 @@ public class AndroidPlugin {
         this.activity = (Activity)context;
     }
 
-    public void PerformHapticFeedback(int hapticFeedbackConstant, int hapticFeedbackFlag) {
+    public boolean PerformHapticFeedback(int hapticFeedbackConstant, int hapticFeedbackFlag) {
         View view = activity.getWindow().getDecorView().findViewById(android.R.id.content);
         // FLAG_IGNORE_GLOBAL_SETTING is deprecated in API level 33
         // only privileged apps can ignore user settings for touch feedback
-        view.performHapticFeedback(hapticFeedbackConstant, hapticFeedbackFlag);
+        return view.performHapticFeedback(hapticFeedbackConstant, hapticFeedbackFlag);
     }
 
-    public void PerformHapticFeedback(int hapticFeedbackConstant) {
+    public boolean PerformHapticFeedback(int hapticFeedbackConstant) {
         View view = activity.getWindow().getDecorView().findViewById(android.R.id.content);
-        // FLAG_IGNORE_GLOBAL_SETTING is deprecated in API level 33
-        // only privileged apps can ignore user settings for touch feedback
-        view.performHapticFeedback(hapticFeedbackConstant);
+        return view.performHapticFeedback(hapticFeedbackConstant);
     }
 }

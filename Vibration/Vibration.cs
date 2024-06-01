@@ -8,283 +8,249 @@
 
 using System;
 using UnityEngine;
+using static GoodVibrations.VibrationLogging;
+using AndroidVibration;
 
-public static class Vibration
+namespace GoodVibrations
 {
+    public static class Vibration
+    {
 #if UNITY_ANDROID
-    [Obsolete("This variable is always null now.", true)]
-    public static AndroidJavaClass unityPlayer, vibrationEffect;
-    [Obsolete("This variable is always null now.", true)]
-    public static AndroidJavaObject currentActivity, vibrator, context;
+        [Obsolete("This variable is always null now.", true)]
+        public static AndroidJavaClass unityPlayer, vibrationEffect;
+        [Obsolete("This variable is always null now.", true)]
+        public static AndroidJavaObject currentActivity, vibrator, context;
 #endif
 
-    public static bool EnableLogging { get; set; }
-    public static bool CanVibrate { get; private set; }
+        public static bool CanVibrate { get; private set; }
 
-    private static bool NoVibrator
-    {
-        get
+        private static bool NoVibrator
         {
-            if (!CanVibrate)
-                Log("This device can't vibrate.");
-            return !CanVibrate;
+            get
+            {
+                if (!CanVibrate)
+                    Log("This device can't vibrate.");
+                return !CanVibrate;
+            }
         }
-    }
 
-    private static bool initialized = false;
+        private static bool initialized = false;
 
-    //[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-    public static void Init ()
-    {
-        if (initialized) return;
-        CanVibrate = SystemInfo.supportsVibration;
+        //[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        public static void Init()
+        {
+            if (initialized) return;
+            //CanVibrate = SystemInfo.supportsVibration;
 
 #if UNITY_EDITOR
-        EnableLogging = true;
-        VibrationiOS.Init();
-        VibrationAndroid.Init();
-        VibrationAndroid.EnableLogging = true;
-        VibrationWebGL.Init();
-        CanVibrate = false;
+            DebugLogLevel = LogLevel.All;
+            VibrationiOS.Init();
+            AndroidVibration.Vibration.Init();
+            VibrationWebGL.Init();
+            CanVibrate = false;
 #elif UNITY_IOS
-        VibrationiOS.Init();
-        CanVibrate = VibrationiOS.CanVibrate;
+            VibrationiOS.Init();
+            CanVibrate = VibrationiOS.CanVibrate;
 #elif UNITY_ANDROID
-        VibrationAndroid.Init();
-        CanVibrate = VibrationAndroid.CanVibrate;
+            VibrationAndroid.Init();
+            CanVibrate = VibrationAndroid.CanVibrate;
 #elif UNITY_WEBGL
-        VibrationWebGL.Init();
-        CanVibrate = VibrationWebGL.CanVibrate;
+            VibrationWebGL.Init();
+            CanVibrate = VibrationWebGL.CanVibrate;
 #endif
 
-        initialized = true;
-    }
+            initialized = true;
+        }
 
-    /// <summary>
-    /// Default Long-ish Vibration
-    /// </summary>
-    public static void Vibrate()
-    {
-        Log("vibrate called");
-        if (NoVibrator) return;
+        /// <summary>
+        /// Default Long-ish Vibration
+        /// </summary>
+        public static bool Vibrate()
+        {
+            Log($"{nameof(Vibrate)} called");
+            if (NoVibrator) return false;
 #if UNITY_ANDROID || UNITY_IOS
-        Handheld.Vibrate();
+            Handheld.Vibrate();
+            return true;
 #elif UNITY_WEBGL
-        VibrationWebGL.Vibrate(200);
+            return VibrationWebGL.Vibrate(200);
 #endif
-    }
-
-    ///<summary>
-    /// Tiny pop vibration
-    ///</summary>
-    public static void VibratePop ()
-    {
-        Log("vibrate pop called");
-        if (NoVibrator) return;
-#if UNITY_IOS
-        VibrationiOS.VibratePop();
-#elif UNITY_ANDROID
-        // disable logging temporarily so we can try different vibrations quickly
-        VibrationAndroid.PauseLogging = true;
-        if (VibrationAndroid.VibratePredefined(VibrationAndroid.PredefinedEffects.TICK))
-            return;
-        else if (VibrationAndroid.PerformHapticFeedback(VibrationAndroid.HapticFeedbacks.KEYBOARD_TAP))
-            return;
-        else
-            VibrationAndroid.Vibrate(50);
-        VibrationAndroid.PauseLogging = false;
-#elif UNITY_WEBGL
-        VibrationWebGL.Vibrate(50);
-#endif
-    }
-
-    ///<summary>
-    /// Small peek vibration
-    ///</summary>
-    public static void VibratePeek ()
-    {
-        Log("vibrate peek called");
-        if (NoVibrator) return;
-#if UNITY_IOS
-        VibrationiOS.VibratePeek();
-#elif UNITY_ANDROID
-        VibrationAndroid.PauseLogging = true;
-        if (VibrationAndroid.VibratePredefined(VibrationAndroid.PredefinedEffects.CLICK))
-            return;
-        else if (VibrationAndroid.PerformHapticFeedback(VibrationAndroid.HapticFeedbacks.CONFIRM))
-            return;
-        else
-            VibrationAndroid.Vibrate(100);
-        VibrationAndroid.PauseLogging = false;
-#elif UNITY_WEBGL
-        VibrationWebGL.Vibrate(100);
-#endif
-    }
-
-    ///<summary>
-    /// 3 small vibrations
-    ///</summary>
-    public static void VibrateNope ()
-{
-        Log("vibrate nope called");
-        if (NoVibrator) return;
-#if UNITY_IOS
-        VibrationiOS.VibrateNope();
-#elif UNITY_ANDROID
-        if (VibrationAndroid.SupportsComposition &&
-            VibrationAndroid.CompositionEffectSupport[VibrationAndroid.CompositionEffects.LOW_TICK])
-        {
-            VibrationAndroid.CompositionEffects[] compEffects =
-            {
-                VibrationAndroid.CompositionEffects.LOW_TICK,
-                VibrationAndroid.CompositionEffects.LOW_TICK,
-                VibrationAndroid.CompositionEffects.LOW_TICK
-            };
-
-            VibrationAndroid.VibrateComposition(compEffects);
         }
-        else
+
+        ///<summary>
+        /// Tiny pop vibration
+        ///</summary>
+        public static bool VibratePop()
         {
-            VibrationAndroid.VibratePattern(new long[] { 0, 50, 100, 50, 100, 50 });
+            Log($"{nameof(VibratePop)} called");
+            if (NoVibrator) return false;
+#if UNITY_IOS
+            return VibrationiOS.VibratePop();
+#elif UNITY_ANDROID
+            return AndroidVibration.Vibration.Vibrate(50);
+#elif UNITY_WEBGL
+            return VibrationWebGL.Vibrate(50);
+#endif
         }
-#elif UNITY_WEBGL
-        int[] milliseconds = { 50, 100, 50, 100, 50 };
-        VibrationWebGL.VibratePattern(milliseconds);
-#endif
-    }
 
-    /// <summary>
-    /// Vibrate for a given duration
-    /// </summary>
-    /// <param name="duration">Alternating periods in milliseconds in which the device vibration is On-Off-On...</param>
-    public static void Vibrate(int duration)
-    {
-        Log($"vibrate duration called: {duration}");
-        if (NoVibrator) return;
+        ///<summary>
+        /// Small peek vibration
+        ///</summary>
+        public static bool VibratePeek()
+        {
+            Log($"{nameof(VibratePeek)} called");
+            if (NoVibrator) return false;
 #if UNITY_IOS
-        Log("iOS does not support vibration durations");
+            return VibrationiOS.VibratePeek();
 #elif UNITY_ANDROID
-        VibrationAndroid.Vibrate(duration);
+            return AndroidVibration.Vibration.Vibrate(100);
 #elif UNITY_WEBGL
-        VibrationWebGL.Vibrate(duration);
+            return VibrationWebGL.Vibrate(100);
 #endif
-    }
+        }
 
-    /// <summary>
-    /// Vibrate a pattern of On-Off durations
-    /// </summary>
-    /// <param name="pattern">Alternating periods in milliseconds in which the device vibration is On-Off-On...</param>
-    public static void VibratePattern(int[] pattern)
-    {
-        Log("vibrate pattern called");
-        if (NoVibrator) return;
+        ///<summary>
+        /// 3 small vibrations
+        ///</summary>
+        public static bool VibrateNope()
+        {
+            Log($"{nameof(VibrateNope)} called");
+            if (NoVibrator) return false;
 #if UNITY_IOS
-        Log("iOS does not support vibration patterns");
+            return VibrationiOS.VibrateNope();
 #elif UNITY_ANDROID
-        // android takes longs and its first element is an off duration
-        long[] longs = new long[pattern.Length + 1];
-        longs[0] = 0;
-        for (int i = 0; i < pattern.Length; i++)
-            longs[i + 1] = pattern[i];
-        VibrationAndroid.VibratePattern(longs);
+            return AndroidVibration.Vibration.VibratePattern(new long[] { 0, 50, 100, 50, 100, 50 });
 #elif UNITY_WEBGL
-        VibrationWebGL.VibratePattern(pattern);
+            return VibrationWebGL.VibratePattern(new int[] { 50, 100, 50, 100, 50 });
 #endif
-    }
+        }
 
-    /// <summary>
-    /// Cancel any current vibrations
-    /// </summary>
-    public static void VibrateCancel()
-    {
-        Log("vibrate cancel called");
-        if (NoVibrator) return;
+        /// <summary>
+        /// Vibrate for a given duration
+        /// </summary>
+        /// <param name="duration">Alternating periods in milliseconds in which the device vibration is On-Off-On...</param>
+        public static bool Vibrate(int duration)
+        {
+            Log($"{nameof(Vibrate)} called with a {nameof(duration)}: {duration}");
+            if (NoVibrator) return false;
 #if UNITY_IOS
-        Log("iOS does not support vibration Canceling");
+            Log("iOS does not support vibration durations", LogLevel.Error);
+            return false;
 #elif UNITY_ANDROID
-        VibrationAndroid.VibrateCancel();
+            return AndroidVibration.Vibration.Vibrate(duration);
 #elif UNITY_WEBGL
-        VibrationWebGL.VibrateCancel();
+            return VibrationWebGL.Vibrate(duration);
 #endif
-    }
+        }
 
-    [Obsolete("This method is obsolete. Call VibrationiOS.VibrateImpact() instead.")]
-    public static void VibrateIOS(ImpactFeedbackStyle style)
-    {
+        /// <summary>
+        /// Vibrate a pattern of On-Off durations
+        /// </summary>
+        /// <param name="pattern">Alternating periods in milliseconds in which the device vibration is On-Off-On...</param>
+        public static bool VibratePattern(int[] pattern)
+        {
+            if (LoggingAllEnabled)
+                Log($"{nameof(VibratePattern)} called with the given {nameof(pattern)}: [{string.Join(", ", pattern)}]");
+            if (NoVibrator) return false;
 #if UNITY_IOS
-        VibrationiOS.VibrateImpact((VibrationiOS.ImpactFeedbackStyle)style);
+            Log("iOS does not support vibration patterns", LogLevel.Error);
+            return false;
+#elif UNITY_ANDROID
+            // android takes longs and its first element is an off duration
+            long[] longs = new long[pattern.Length + 1];
+            longs[0] = 0;
+            for (int i = 0; i < pattern.Length; i++)
+                longs[i + 1] = pattern[i];
+            return AndroidVibration.Vibration.VibratePattern(longs);
+#elif UNITY_WEBGL
+            return VibrationWebGL.VibratePattern(pattern);
 #endif
-    }
+        }
 
-    [Obsolete("This method is obsolete. Call VibrationiOS.VibrateNotification() instead.")]
-    public static void VibrateIOS(NotificationFeedbackStyle style)
-    {
+        /// <summary>
+        /// Cancel the playback of any current vibration taking place on the device.
+        /// </summary>
+        /// <returns>Whether the cancel could be done, not if it was successful.</returns>
+        public static bool VibrateCancel()
+        {
+            Log($"{nameof(VibratePop)} called");
+            if (NoVibrator) return false;
 #if UNITY_IOS
-        VibrationiOS.VibrateNotification((VibrationiOS.NotificationFeedbackStyle)style);
+            Log("iOS does not support vibration Canceling", LogLevel.Error);
+            return false;
+#elif UNITY_ANDROID
+            return AndroidVibration.Vibration.VibrateCancel();
+#elif UNITY_WEBGL
+            return VibrationWebGL.VibrateCancel();
 #endif
-    }
+        }
 
-    [Obsolete("This method is obsolete. Call VibrationiOS.VibrateSelectionChanged() instead.")]
-    public static void VibrateIOS_SelectionChanged()
-    {
-#if UNITY_IOS
-        VibrationiOS.VibrateSelectionChanged();
-#endif
-    }
+        [Obsolete("This method is obsolete. Call VibrationiOS.VibrateImpact() instead.")]
+        public static void VibrateIOS(ImpactFeedbackStyle style)
+        {
+            VibrationiOS.VibrateImpact((VibrationiOS.ImpactFeedbackStyle)style);
+        }
+
+        [Obsolete("This method is obsolete. Call VibrationiOS.VibrateNotification() instead.")]
+        public static void VibrateIOS(NotificationFeedbackStyle style)
+        {
+            VibrationiOS.VibrateNotification((VibrationiOS.NotificationFeedbackStyle)style);
+        }
+
+        [Obsolete("This method is obsolete. Call VibrationiOS.VibrateSelectionChanged() instead.")]
+        public static void VibrateIOS_SelectionChanged()
+        {
+            VibrationiOS.VibrateSelectionChanged();
+        }
 
 #if UNITY_ANDROID
-    [Obsolete("This method is obsolete. Call VibrationAndroid.Vibrate() instead.")]
-    public static void VibrateAndroid ( long milliseconds )
-    {
-        VibrationAndroid.Vibrate(milliseconds);
-    }
+        [Obsolete("This method is obsolete. Call VibrationAndroid.Vibrate() instead.")]
+        public static void VibrateAndroid(long milliseconds)
+        {
+            AndroidVibration.Vibration.Vibrate(milliseconds);
+        }
 
-    [Obsolete("This method is obsolete. Call VibrationAndroid.VibratePattern() instead.")]
-    public static void VibrateAndroid ( long[] pattern, int repeat )
-    {
-        VibrationAndroid.VibratePattern(pattern, repeatIndex : repeat);
-    }
+        [Obsolete("This method is obsolete. Call VibrationAndroid.VibratePattern() instead.")]
+        public static void VibrateAndroid(long[] pattern, int repeat)
+        {
+            AndroidVibration.Vibration.VibratePattern(pattern, repeatIndex: repeat);
+        }
 #endif
 
-    [Obsolete("This method is obsolete. Call VibrationAndroid.CancelVibration() instead.")]
-    public static void CancelAndroid ()
-    {
-        VibrationAndroid.VibrateCancel();
+        [Obsolete("This method is obsolete. Call VibrationAndroid.CancelVibration() instead.")]
+        public static void CancelAndroid()
+        {
+            AndroidVibration.Vibration.VibrateCancel();
+        }
+
+        [Obsolete("This method is obsolete. Use the property CanVibrate instead.")]
+        public static bool HasVibrator()
+        {
+            return CanVibrate;
+        }
+
+        [Obsolete("This property is obsolete. Use the property VibrationAndroid.AndroidVersion instead.")]
+        public static int AndroidVersion
+        {
+            get => AndroidVibration.Vibration.AndroidVersion;
+        }
     }
 
-    [Obsolete("This method is obsolete. Use the property CanVibrate instead.")]
-    public static bool HasVibrator ()
+    [Obsolete("This enum is obsolete. Use the enum VibrationiOS.ImpactFeedbackStyle instead.")]
+    public enum ImpactFeedbackStyle
     {
-        return CanVibrate;
+        Heavy,
+        Medium,
+        Light,
+        Rigid,
+        Soft
     }
 
-    [Obsolete("This property is obsolete. Use the property VibrationAndroid.AndroidVersion instead.")]
-    public static int AndroidVersion
+    [Obsolete("This enum is obsolete. Use the enum VibrationiOS.NotificationFeedbackStyle instead.")]
+    public enum NotificationFeedbackStyle
     {
-        get => VibrationAndroid.AndroidVersion;
+        Error,
+        Success,
+        Warning
     }
-
-    private static void Log(string msg)
-    {
-        if (!EnableLogging) return;
-        Debug.LogWarning(msg);
-    }
-}
-
-[Obsolete("This enum is obsolete. Use the enum VibrationiOS.ImpactFeedbackStyle instead.")]
-public enum ImpactFeedbackStyle
-{
-    Heavy,
-    Medium,
-    Light,
-    Rigid,
-    Soft
-}
-
-[Obsolete("This enum is obsolete. Use the enum VibrationiOS.NotificationFeedbackStyle instead.")]
-public enum NotificationFeedbackStyle
-{
-    Error,
-    Success,
-    Warning
 }
