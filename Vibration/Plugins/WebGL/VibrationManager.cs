@@ -2,11 +2,11 @@
 using System.Runtime.InteropServices;
 #endif
 using UnityEngine;
-using static GoodVibrations.VibrationLogging;
+using static Vibes.Logging;
 
-namespace GoodVibrations
+namespace Vibes.WebGL
 {
-    public static class VibrationWebGL
+    public static class VibrationManager
     {
 #if UNITY_WEBGL
         [DllImport("__Internal")]
@@ -23,6 +23,7 @@ namespace GoodVibrations
 #endif
 
         public static bool CanVibrate { get; private set; }
+        
         private static bool NoVibrationSupport
         {
             get

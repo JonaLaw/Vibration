@@ -1,8 +1,8 @@
 using UnityEngine;
 
-namespace GoodVibrations
+namespace Vibes
 {
-    public static class VibrationLogging
+    public static class Logging
     {
         public enum LogLevel
         {
@@ -15,7 +15,7 @@ namespace GoodVibrations
 
         public static bool PauseLogging { get; set; }
         public static LogLevel DebugLogLevel { get; set; } = LogLevel.Warning;
-        internal static bool LoggingAllEnabled { get => PauseLogging == false && DebugLogLevel == LogLevel.All; }
+        internal static bool LoggingAllEnabled => PauseLogging == false && DebugLogLevel == LogLevel.All;
 
         internal static void Log(string log, LogLevel logLevel = LogLevel.All)
         {
@@ -25,6 +25,7 @@ namespace GoodVibrations
                 case LogLevel.None:
                     return;
                 case LogLevel.Error:
+                    if (DebugLogLevel < LogLevel.Error) break;
                     Debug.LogError(log); break;
                 case LogLevel.Warning:
                     if (DebugLogLevel < LogLevel.Warning) break;

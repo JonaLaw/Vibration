@@ -10,28 +10,28 @@
 using System.Runtime.InteropServices;
 #endif
 using UnityEngine;
-using static GoodVibrations.VibrationLogging;
+using static Vibes.Logging;
 
-namespace GoodVibrations
+namespace Vibes.iOS
 {
-    public static class VibrationiOS
+    public enum ImpactFeedbackStyle
     {
-        public enum ImpactFeedbackStyle
-        {
-            Heavy,
-            Medium,
-            Light,
-            Rigid,
-            Soft
-        }
+        Heavy,
+        Medium,
+        Light,
+        Rigid,
+        Soft
+    }
 
-        public enum NotificationFeedbackStyle
-        {
-            Error,
-            Success,
-            Warning
-        }
+    public enum NotificationFeedbackStyle
+    {
+        Error,
+        Success,
+        Warning
+    }
 
+    public static class VibrationManager
+    {
 #if UNITY_IOS
         [DllImport("__Internal")]
         private static extern bool _HasVibrator();

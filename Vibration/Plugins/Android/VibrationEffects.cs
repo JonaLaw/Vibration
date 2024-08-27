@@ -1,11 +1,16 @@
 using System;
 using System.Collections.ObjectModel;
 using UnityEngine;
-using static GoodVibrations.VibrationLogging;
-using static AndroidVibration.Vibration;
+using static Vibes.Logging;
+using static Vibes.Android.VibrationManager;
 
-namespace AndroidVibration
+namespace Vibes.Android
 {
+    /// <summary>
+    /// A VibrationEffect describes a haptic effect (not a <see cref="HapticFeedback"/>) to be performed by a <see cref="Vibrator"/>.
+    /// These effects may be any number of things, from single shot vibrations to complex waveforms.
+    /// <para/><see href="https://developer.android.com/reference/android/os/VibrationEffect">Android Docs</see>
+    /// </summary>
     public class VibrationEffect : IDisposable, ISupported
     {
         public const int APIRequirement = 26;
@@ -15,11 +20,18 @@ namespace AndroidVibration
         private const string createOneShotMethod = "createOneShot",
             createWaveformMethod = "createWaveform";
 
+        /// <summary>
+        /// <para/><see href="https://developer.android.com/reference/android/os/VibrationEffect#constants_1">Android Docs</see>
+        /// </summary>
         public enum Predefined
         {
+            ///<summary>A click effect. Use this effect as a baseline, as it's the most common type of click effect.</summary>
             CLICK = 0,
+            ///<summary>A double click effect.</summary>
             DOUBLE_CLICK = 1,
+            ///<summary>A heavy click effect. This effect is stronger than CLICK.</summary>
             HEAVY_CLICK = 5,
+            ///<summary>A tick effect. This effect is less strong compared to CLICK.</summary>
             TICK = 2
         }
 
@@ -51,7 +63,7 @@ namespace AndroidVibration
             get
             {
                 if (!SupportsAmplitudeControl)
-                    Log("This device reports no support for Amplitude Control", LogLevel.Warning);
+                    Log("This device has/reports no support for Amplitude Control", LogLevel.Warning);
                 return !SupportsAmplitudeControl;
             }
         }
@@ -68,7 +80,6 @@ namespace AndroidVibration
 
         /// <summary>
         /// Note: Even if the device reports no support for a predefined effect, it may still play a fallback vibration.
-        /// Play an unsupported effect at your own risk.
         /// </summary>
         public static ReadOnlyDictionary<Predefined, SupportStatus> PredefinedSupport { get; private set; }
 
@@ -103,10 +114,13 @@ namespace AndroidVibration
         }
 
         /// <summary>
-        /// Attempts to create a Vibration Effect with the given inputs. Available from API Level >= 26.
+        /// Attempts to create a one shot vibration effect that will vibrate constantly for the specified period of time at the optional specified amplitude, and then stop.
+        /// <br/>Available from API Level >= 26.
+        /// <para/><see href="https://developer.android.com/reference/android/os/VibrationEffect#createOneShot(long,%20int)">Android Docs</see>
         /// </summary>
         /// <param name="milliseconds">Duration of the vibration in milliseconds.</param>
-        /// <param name="amplitude">If -1, amplitude is set to the device's default. Otherwise, values between 1-255 will be used. Check SupportsAmplitudeControl for availability</param>
+        /// <param name="amplitude">If -1, amplitude is set to the device's default. Otherwise, values between 1-255 will be used.
+        /// <br/>Check SupportsAmplitudeControl for availability.</param>
         public VibrationEffect(long milliseconds, int amplitude = Amplitude.Default)
         {
             if (NoSupport) return;
@@ -129,11 +143,14 @@ namespace AndroidVibration
         }
 
         /// <summary>
-        /// Attempts to create a Vibration Effect with the given inputs. Available from API Level >= 26.
+        /// Attempts to create a waveform vibration effect, a potentially repeating series of timing and optional amplitude pairs.
+        /// <br/>Available from API Level >= 26.
+        /// <para/><see href="https://developer.android.com/reference/android/os/VibrationEffect#createWaveform(long[],%20int[],%20int)">Android Docs</see>
         /// </summary>
         /// <param name="pattern">Pattern of durations, with format Off-On-Off-On...</param>
-        /// <param name="amplitudes">Amplitudes can be Null (for default) or array of exactly Pattern length with values of 
-        /// either -1 (device default) or 0 - 255. Values that are < -1 and 0 will not cause vibrations. Check SupportsAmplitudeControl for availability.</param>
+        /// <param name="amplitudes">Amplitudes can be Null (for default) or array of exactly pattern length with values of either -1 (device default) or 0 - 255.
+        /// <br/>Values that are less than -1 or equal to 0 will not cause vibrations.
+        /// <br/>Check SupportsAmplitudeControl for availability.</param>
         /// <param name="repeatIndex">If -1, no repeat. Otherwise, repeat from given nth index in Pattern.</param>
         public VibrationEffect(long[] pattern, int[] amplitudes = null, int repeatIndex = -1)
         {
@@ -166,9 +183,13 @@ namespace AndroidVibration
         }
 
         /// <summary>
-        /// Attempts to create the Predefined Effect. Available from API Level >= 29.
+        /// Attempts to create a predefined vibration effect. Predefined effect are a set of common vibration effects that should be identical, regardless of the app they come from.
+        /// <br/>This can fallback to a generic pattern if there does not exist a hardware-specific implementation of the effect.
+        /// <br/>Available from API Level >= 29.
+        /// <para/><see href="https://developer.android.com/reference/android/os/VibrationEffect#createPredefined(int)">Android Docs</see>
         /// </summary>
-        /// <param name="predefined">Support for each predefined effect will vary by device.</param>
+        /// <param name="predefined">Support for each predefined effect will vary by device.
+        /// <br/>Check <see cref="PredefinedSupport"/> for each effect's reported support.</param>
         public VibrationEffect(Predefined predefined)
         {
             Log($"{nameof(VibrationEffect)} called with {nameof(predefined)}: {predefined}");
@@ -180,65 +201,6 @@ namespace AndroidVibration
                 Log($"This device has the {nameof(SupportStatus)} of {SupportStatus.UNKNOWN} for the {nameof(predefined)} of {predefined}", LogLevel.Warning);
 
             Effect = vibrationEffectClass.CallStatic<AndroidJavaObject>("createPredefined", (int)predefined);
-        }
-
-        /// <summary>
-        /// Attempts to Composes the Vibration Composition so that it can be played on demand. Available from API Level >= 30.
-        /// </summary>
-        /// <param name="vibrationComposition">If the composition is null or empty the Vibration effect will be empty too.</param>
-        public VibrationEffect(VibrationComposition vibrationComposition)
-        {
-            if (VibrationComposition.NoSupport) return;
-            if (vibrationComposition == null || vibrationComposition.IsEmpty)
-            {
-                Log($"The given {nameof(vibrationComposition)} is null or it's empty", LogLevel.Error);
-                return;
-            }
-            ComposeComposition(vibrationComposition);
-        }
-
-        /// <summary>
-        /// Attempts to create the Composition Effect. Available from API Level >= 30.
-        /// </summary>
-        /// <param name="primitives">The primitives you want to add to the composition. If a primitive is not supported the entire compostion fails.</param>
-        /// <param name="scales">The scales to apply to the intensity of the primitive. Either null or -1s for default, or between 0f and 1f inclusive.</param>
-        /// <param name="delays">The amounts of time (ms) to wait before playing the next primitive. Either null or values 0 or greater.</param>
-        public VibrationEffect(VibrationComposition.Primitives[] primitives, float[] scales = null, int[] delays = null)
-        {
-            if (VibrationComposition.NoSupport) return;
-
-            if (primitives.Length == 0)
-            {
-                Log($"The length of {nameof(primitives)} \'{primitives.Length}\' is 0", LogLevel.Error);
-                return;
-            }
-            if (scales != null && primitives.Length != scales.Length)
-            {
-                Log($"The length of {nameof(primitives)} \'{primitives.Length}\' does not equal the length of {nameof(scales)} \'{scales.Length}\'", LogLevel.Error);
-                return;
-            }
-            if (delays != null && primitives.Length != delays.Length)
-            {
-                Log($"The length of {nameof(primitives)} \'{primitives.Length}\' does not equal the length of {nameof(delays)} \'{delays.Length}\'", LogLevel.Error);
-                return;
-            }
-
-            using VibrationComposition composition = new();
-            for (int i = 0; i < primitives.Length; i++)
-            {
-                bool result;
-                
-                if (scales == null)
-                    result = composition.AddPrimitive(primitives[i]);
-                else if (delays == null)
-                    result = composition.AddPrimitive(primitives[i], scales[i]);
-                else
-                    result = composition.AddPrimitive(primitives[i], scales[i], delays[i]);
-
-                if (result == false) return;
-            }
-
-            ComposeComposition(composition);
         }
 
         internal VibrationEffect(AndroidJavaObject effect)

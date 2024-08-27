@@ -13,7 +13,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 using GoodVibrations;
-using AndroidVibration;
+using Vibes.Android;
 
 public class VibrationExample : MonoBehaviour
 {
@@ -137,25 +137,25 @@ public class VibrationExample : MonoBehaviour
     private void AddAndroidInfo()
     {
         SectionGroup newGroup = new("Android Info");
-        newGroup.AddSection(new Section(newGroup, $"API Version: {AndroidVibration.Vibration.AndroidVersion}"));
-        newGroup.AddSection(new Section(newGroup, $"Has Vibrator: {AndroidVibration.Vibration.CanVibrate}"));
+        newGroup.AddSection(new Section(newGroup, $"API Version: {Vibes.Android.VibrationManager.AndroidVersion}"));
+        newGroup.AddSection(new Section(newGroup, $"Has Vibrator: {Vibes.Android.VibrationManager.CanVibrate}"));
         newGroup.AddSection(new Section(newGroup, $"Haptic Feedback: {HapticFeedback.Supported}"));
         newGroup.AddSection(new Section(newGroup, $"Haptic Status: {HapticFeedback.HapticStatus}"));
         newGroup.AddSection(new Section(newGroup, $"Vibration Effects: {VibrationEffect.Supported}"));
         newGroup.AddSection(new Section(newGroup, $"Predefined Effects: {VibrationEffect.SupportsPredefined}"));
         newGroup.AddSection(new Section(newGroup, $"Amplitude Control: {VibrationEffect.SupportsAmplitudeControl}"));
         newGroup.AddSection(new Section(newGroup, $"Composition Effects: {VibrationComposition.Supported}"));
-        //newGroup.AddSection(new ButtonSection(newGroup, "Android Log Support", delegate { AndroidVibration.Vibration.LogSupport(); }, SupportType.Yes));
+        //newGroup.AddSection(new ButtonSection(newGroup, "Android Log Support", delegate { Vibe.Android.Vibration.LogSupport(); }, SupportType.Yes));
     }
 
     private void AddAndroidBasicVibrations()
     {
         SectionGroup newGroup = new("Android Vibration");
 
-        SupportType support = AndroidVibration.Vibration.CanVibrate ? SupportType.Yes : SupportType.No;
+        SupportType support = Vibes.Android.VibrationManager.CanVibrate ? SupportType.Yes : SupportType.No;
         SupportType amplitudeSupport = VibrationEffect.SupportsAmplitudeControl ? SupportType.Yes : SupportType.No;
         SupportType buttonSupport = SupportType.Yes;
-        if (!AndroidVibration.Vibration.CanVibrate)
+        if (!Vibes.Android.VibrationManager.CanVibrate)
             buttonSupport = SupportType.No;
         else if (!VibrationEffect.SupportsAmplitudeControl)
             buttonSupport = SupportType.Limited;
@@ -173,7 +173,7 @@ public class VibrationExample : MonoBehaviour
         vibratePatternSection.SetupButton(delegate { ButtonAndroidVibratePattern(vibratePatternSection); }, buttonSupport);
         newGroup.AddSection(vibratePatternSection);
 
-        newGroup.AddSection(new ButtonSection(newGroup, "Vibration Cancel", delegate { AndroidVibration.Vibration.VibrateCancel(); }, support));
+        newGroup.AddSection(new ButtonSection(newGroup, "Vibration Cancel", delegate { Vibes.Android.VibrationManager.VibrateCancel(); }, support));
 
         InputSection vibrateOldSection = new(newGroup, "Vibrate Old", 1);
         vibrateOldSection.AddInput("Duration (ms)", "Input Duration", support, InputField.ContentType.IntegerNumber, false);
@@ -190,7 +190,7 @@ public class VibrationExample : MonoBehaviour
     private void AddAndroidHaptics()
     {
         SectionGroup newGroup = new("Android Haptic Feedbacks");
-        if (HapticFeedback.HapticStatus== AndroidVibration.Vibration.SupportStatus.UNKNOWN)
+        if (HapticFeedback.HapticStatus== Vibes.Android.VibrationManager.SupportStatus.UNKNOWN)
         {
             newGroup.AddSection(new Section(newGroup, $"Warning: Can't tell if haptics are enabled on your device. API 33+"));
             foreach (var item in HapticFeedback.HapticSupport)
@@ -217,13 +217,13 @@ public class VibrationExample : MonoBehaviour
         foreach (var item in VibrationEffect.PredefinedSupport)
         {
             SupportType support;
-            if (item.Value == AndroidVibration.Vibration.SupportStatus.NO)
+            if (item.Value == Vibes.Android.VibrationManager.SupportStatus.NO)
                 support = SupportType.No;
-            else if (item.Value == AndroidVibration.Vibration.SupportStatus.UNKNOWN)
+            else if (item.Value == Vibes.Android.VibrationManager.SupportStatus.UNKNOWN)
                 support = SupportType.Unknown;
             else support = SupportType.Yes;
 
-            newGroup.AddSection(new ButtonSection(newGroup, item.Key.ToString(), delegate { AndroidVibration.Vibration.VibratePredefined(item.Key); }, support));
+            newGroup.AddSection(new ButtonSection(newGroup, item.Key.ToString(), delegate { Vibes.Android.VibrationManager.VibratePredefined(item.Key); }, support));
         }
     }
 
@@ -243,7 +243,7 @@ public class VibrationExample : MonoBehaviour
                 fullSupport = false;
         }
         if (fullSupport == noSupport)
-            Debug.LogError("AndroidVibration.Vibration.CompositionPrimitiveSupport is empty???");
+            Debug.LogError("Vibe.Android.Vibration.CompositionPrimitiveSupport is empty???");
         else if (fullSupport)
             primitiveSupport = SupportType.Yes;
         else if (noSupport)
@@ -258,13 +258,13 @@ public class VibrationExample : MonoBehaviour
         compositionSection.SetupButton(delegate { ButtonAndroidVibrateComposition(compositionSection); }, primitiveSupport);
         newGroup.AddSection(compositionSection);
 
-        newGroup.AddSection(new ButtonSection(newGroup, "Vibration Cancel", delegate { AndroidVibration.Vibration.VibrateCancel(); }, compositionSupport));
+        newGroup.AddSection(new ButtonSection(newGroup, "Vibration Cancel", delegate { Vibes.Android.VibrationManager.VibrateCancel(); }, compositionSupport));
 
         foreach (var item in VibrationComposition.PrimitiveSupport)
         {
             primitiveSupport = item.Value ? SupportType.Yes : SupportType.No;
             newGroup.AddSection(new ButtonSection(newGroup, $"{(int)item.Key}: {item.Key}",
-                delegate { AndroidVibration.Vibration.VibrateComposition(new VibrationComposition.Primitives[] { item.Key }); },
+                delegate { Vibes.Android.VibrationManager.VibrateComposition(new VibrationComposition.Primitives[] { item.Key }); },
                 primitiveSupport));
         }
     }
@@ -301,7 +301,7 @@ public class VibrationExample : MonoBehaviour
         {
             int duration = inputSection.GetInputValueAt(0);
             int amplitude = inputSection.GetInputValueAt(1);
-            AndroidVibration.Vibration.Vibrate(duration, amplitude);
+            Vibes.Android.VibrationManager.Vibrate(duration, amplitude);
         }
         catch (Exception e)
         {
@@ -317,7 +317,7 @@ public class VibrationExample : MonoBehaviour
             long[] durations = inputSection.GetInputValuesAt<long>(0);
             int[] amplitudes = inputSection.GetInputValuesAt<int>(1);
             int repeatIndex = inputSection.GetInputValueAt(2);
-            AndroidVibration.Vibration.VibratePattern(durations, amplitudes, repeatIndex);
+            Vibes.Android.VibrationManager.VibratePattern(durations, amplitudes, repeatIndex);
         }
         catch (Exception e)
         {
@@ -331,7 +331,7 @@ public class VibrationExample : MonoBehaviour
         try
         {
             int duration = inputSection.GetInputValueAt(0);
-            AndroidVibration.Vibration.DefaultVibrator.Vibrate(duration);
+            Vibes.Android.VibrationManager.DefaultVibrator.Vibrate(duration);
         }
         catch (Exception e)
         {
@@ -346,7 +346,7 @@ public class VibrationExample : MonoBehaviour
         {
             long[] durations = inputSection.GetInputValuesAt<long>(0);
             int repeatIndex = inputSection.GetInputValueAt(1);
-            AndroidVibration.Vibration.DefaultVibrator.Vibrate(durations, repeatIndex);
+            Vibes.Android.VibrationManager.DefaultVibrator.Vibrate(durations, repeatIndex);
         }
         catch (Exception e)
         {
@@ -360,10 +360,10 @@ public class VibrationExample : MonoBehaviour
         try
         {
             int[] effectsIDs = inputSection.GetInputValuesAt<int>(0);
-            var compositionEffects = AndroidVibration.Vibration.ConvertToEnumArray<VibrationComposition.Primitives>(effectsIDs);
+            var compositionEffects = Vibes.Android.VibrationManager.ConvertToEnumArray<VibrationComposition.Primitives>(effectsIDs);
             float[] scales = inputSection.GetInputValuesAt<float>(1);
             int[] delays = inputSection.GetInputValuesAt<int>(2);
-            AndroidVibration.Vibration.VibrateComposition(compositionEffects, scales, delays);
+            Vibes.Android.VibrationManager.VibrateComposition(compositionEffects, scales, delays);
         }
         catch (Exception e)
         {

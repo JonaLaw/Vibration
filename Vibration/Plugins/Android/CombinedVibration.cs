@@ -1,12 +1,12 @@
 using System;
 using UnityEngine;
-using static GoodVibrations.VibrationLogging;
-using static AndroidVibration.Vibration;
+using static Vibes.Logging;
+using static Vibes.Android.VibrationManager;
 
-namespace AndroidVibration
+namespace Vibes.Android
 {
     /// <summary>
-    /// A combination of <see cref="VibrationEffect">Vibration Effects</see> to be performed by one or more <see cref="Vibrator">Vibrators</see>.
+    /// A combination of <see cref="VibrationEffect"/>s to be performed by one or more <see cref="Vibrator"/>s.
     /// <para/><see href="https://developer.android.com/reference/android/os/CombinedVibration">Android Docs</see>
     /// </summary>
     public class CombinedVibration : IDisposable, ISupported
@@ -36,7 +36,7 @@ namespace AndroidVibration
         }
 
         /// <summary>
-        /// Create a vibration that plays a single VibrationEffect in parallel on all <see cref="Vibrator">vibrators</see>.
+        /// Create a vibration that plays a single <see cref="VibrationEffect"/> in parallel on all <see cref="Vibrator"/>s.
         /// <para/><see href="https://developer.android.com/reference/android/os/CombinedVibration#createParallel(android.os.VibrationEffect)">Android Docs</see>
         /// </summary>
         public CombinedVibration(VibrationEffect effect)
@@ -68,7 +68,7 @@ namespace AndroidVibration
         }
 
         /// <summary>
-        /// A combination of <see cref="VibrationEffect">Vibration Effects</see> that should be played in multiple <see cref="Vibrator">vibrators</see> in parallel.
+        /// A combination of <see cref="VibrationEffect"/>s that should be played in multiple <see cref="Vibrator"/>s in parallel.
         /// <para/><see href="https://developer.android.com/reference/android/os/CombinedVibration.ParallelCombination">Android Docs</see>
         /// </summary>
         public class ParallelCombination : IDisposable, ISupported
@@ -76,9 +76,22 @@ namespace AndroidVibration
             private AndroidJavaObject parallel;
             public bool IsEmpty => parallel == null;
 
+            private bool NoParallel
+            {
+                get
+                {
+                    if (parallel == null)
+                    {
+                        Log($"The {nameof(parallel)} is null.", LogLevel.Error);
+                        return true;
+                    }
+                    return false;
+                }
+            }
+
             /// <summary>
-            /// Start creating a vibration that plays effects in parallel on one or more <see cref="Vibrator">vibrators</see>.
-            /// A parallel vibration takes one or more <see cref="VibrationEffect">Vibration Effects</see> associated to individual vibrators to be performed at the same time.
+            /// Start creating a vibration that plays effects in parallel on one or more <see cref="Vibrator"/>s.
+            /// A parallel vibration takes one or more <see cref="VibrationEffect"/>s associated to individual vibrators to be performed at the same time.
             /// <para/><see href="https://developer.android.com/reference/android/os/CombinedVibration#startParallel()">Android Docs</see>
             /// </summary>
             public ParallelCombination()
@@ -88,7 +101,7 @@ namespace AndroidVibration
             }
 
             /// <summary>
-            /// Add or replace a one shot vibration effect to be performed by the specified vibrator.
+            /// Add or replace a one shot <see cref="VibrationEffect"/> to be performed by the specified <see cref="Vibrator"/>.
             /// <para/><see href="https://developer.android.com/reference/android/os/CombinedVibration.ParallelCombination#addVibrator(int,%20android.os.VibrationEffect)">Android Docs</see>
             /// </summary>
             /// <param name="vibrator">The id of the vibrator that should perform this effect.</param>
@@ -96,12 +109,7 @@ namespace AndroidVibration
             /// <returns></returns>
             public bool AddVibrator(Vibrator vibrator, VibrationEffect effect)
             {
-                if (NoSupport) return false;
-                if (IsEmpty)
-                {
-                    Log($"The {nameof(parallel)} is null.", LogLevel.Error);
-                    return false;
-                }
+                if (NoSupport || NoParallel) return false;
                 if (vibrator == null)
                 {
                     Log($"The given {nameof(vibrator)} is null.", LogLevel.Error);
@@ -124,11 +132,7 @@ namespace AndroidVibration
             /// <returns>The CombinedVibration resulting from combining the added effects to be played in parallel.</returns>
             public CombinedVibration Combine()
             {
-                if (IsEmpty)
-                {
-                    Log($"The {nameof(parallel)} is empty.", LogLevel.Error);
-                    return null;
-                }
+                if (NoParallel) return null;
                 return new CombinedVibration(parallel.Call<AndroidJavaObject>("combine"));
             }
 
