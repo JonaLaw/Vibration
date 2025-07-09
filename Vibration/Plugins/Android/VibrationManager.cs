@@ -17,12 +17,18 @@ namespace Vibes.Android
         NO = 2
     }
 
+    /// <summary>
+    /// Manages Android Vibration services and contains shared helper functions for them.<see cref="Vibrator"/>s.
+    /// </summary>
     public static class VibrationManager
     {
         /// <summary>
-        /// a.k.a. API version
+        /// AKA API version
         /// </summary>
         public static int AndroidVersion { get; private set; }
+        /// <summary>
+        /// If the hardware device have a vibrator
+        /// </summary>
         public static bool CanVibrate { get; private set; }
         public static Vibrator DefaultVibrator { get; private set; }
         public static ReadOnlyCollection<Vibrator> Vibrators { get; private set; }
@@ -42,6 +48,9 @@ namespace Vibes.Android
         private const string vibrateMethod = "vibrate";
         private static bool initialized = false;
 
+        /// <summary>
+        /// Initializes all the Android services needed for Vibration.
+        /// </summary>
         public static void Init()
         {
             if (initialized) return;
@@ -97,10 +106,10 @@ namespace Vibes.Android
                 // there is api support for multiple vibrators, but i haven't seen any discussion about real world use of this
                 int[] vibratorIDs = VibratorManager.GetVibratorIds();
                 Vibrator[] vibrators = new Vibrator[vibratorIDs.Length];
-                for (int i = 0; i < vibratorIDs.Length; i++)
+                foreach (int id in vibratorIDs)
                 {
-                    vibrators[i] = DefaultVibrator.id == vibratorIDs[i] ?
-                        DefaultVibrator : VibratorManager.GetVibrator(vibratorIDs[i]);
+                    vibrators[id] = DefaultVibrator.id == id ?
+                        DefaultVibrator : VibratorManager.GetVibrator(id);
                 }
                 Vibrators = Array.AsReadOnly(vibrators);
             }
@@ -108,133 +117,7 @@ namespace Vibes.Android
             CompleteInitialization();
         }
 
-        /// <summary>
-        /// Attempts to Vibrate for the given milliseconds, with amplitude (if available).
-        /// </summary>
-        /// <param name="milliseconds">Duration of the vibration in milliseconds.</param>
-        /// <param name="amplitude">If -1, amplitude is set to the device's default. Otherwise, values between 1-255 will be used. Check SupportsAmplitudeControl for availability.</param>
-        /// <param name="cancel">Do you want to cancel any current vibrations taking place before this effect is played?</param>
-        /// <returns>Whether the vibration could be played, not if it was successful in playing.</returns>
-        public static bool Vibrate(long milliseconds, int amplitude = VibrationEffect.Amplitude.Default, bool cancel = false)
-        {
-            Log($"{nameof(Vibrate)} called with {nameof(milliseconds)}: {milliseconds}, {nameof(amplitude)}: {amplitude}, {nameof(cancel)}: {cancel}");
-            
-            if (cancel && VibrateCancel() == false) return false;
-
-            if (!VibrationEffect.Supported)
-#pragma warning disable CS0618 // Type or member is obsolete
-                return DefaultVibrator.Vibrate(milliseconds);
-#pragma warning restore CS0618 // Type or member is obsolete
-
-            using VibrationEffect effect = new(milliseconds, amplitude);
-            return DefaultVibrator.Vibrate(effect);
-        }
-
-        /// <summary>
-        /// Attempts to vibrate the given pattern, with amplitudes (if available), and an optional repeat setting.
-        /// </summary>
-        /// <param name="pattern">Pattern of durations, with format Off-On-Off-On...</param>
-        /// <param name="amplitudes">Amplitudes can be Null (for default) or array of exactly Pattern length with values of 
-        /// either -1 (device default) or 0 - 255. Values that are < -1 and 0 will not cause vibrations. Check SupportsAmplitudeControl for availability.</param>
-        /// <param name="repeatIndex">If -1, no repeat. Otherwise, repeat from given nth index in Pattern.</param>
-        /// <param name="cancel">Do you want to cancel any current vibrations taking place before this effect is played?</param>
-        /// <returns>Whether the vibration pattern could be played, not if it was successful in playing.</returns>
-        public static bool VibratePattern(long[] pattern, int[] amplitudes = null, int repeatIndex = -1, bool cancel = false)
-        {
-            if (LoggingAllEnabled) // don't want to call string.join if avoidable
-            {
-                Log($"{nameof(VibratePattern)} called with {nameof(pattern)}: [{string.Join(", ", pattern)}]\n" +
-                    $"{nameof(amplitudes)}: [{string.Join(", ", amplitudes)}]\n" +
-                    $"{nameof(repeatIndex)}: {repeatIndex}, {nameof(cancel)}: {cancel}");
-            }
-
-            if (cancel && VibrateCancel() == false) return false;
-
-            if (!VibrationEffect.Supported)
-#pragma warning disable CS0618 // Type or member is obsolete
-                return DefaultVibrator.Vibrate(pattern, repeatIndex);
-#pragma warning restore CS0618 // Type or member is obsolete
-
-            using VibrationEffect effect = new(pattern, amplitudes, repeatIndex);
-            if (effect.IsEmpty) return false;
-            return DefaultVibrator.Vibrate(effect);
-        }
-
-        /// <summary>
-        /// Attempts to create the Predefined Effect and vibrate it. Available from API Level >= 29.
-        /// </summary>
-        /// <param name="predefined">Support for each predefined effect will vary by device.</param>
-        /// <param name="cancel">Do you want to cancel any current vibrations taking place before this effect is played?</param>
-        /// <returns>Whether the vibration effect could be played, not if it was successful in playing.</returns>
-        public static bool VibratePredefined(VibrationEffect.Predefined predefined, bool cancel = false)
-        {
-            Log($"{nameof(VibratePredefined)} called with {nameof(predefined)}: {predefined}");
-            if (cancel && VibrateCancel() == false) return false;
-            using VibrationEffect effect = new(predefined);
-            return DefaultVibrator.Vibrate(effect);
-        }
-
-        /// <summary>
-        /// Attempts to create the Composition Effect and vibrate it. Available from API Level >= 30.
-        /// </summary>
-        /// <param name="primitives">The primitives you want to add to the composition. If a primitive is not supported the entire compostion fails.</param>
-        /// <param name="scales">The scales to apply to the intensity of the primitive. Either null or -1s for default, or between 0f and 1f inclusive.</param>
-        /// <param name="delays">The amounts of time (ms) to wait before playing the next primitive. Either null or values 0 or greater.</param>
-        /// <param name="cancel">Do you want to cancel any current vibrations taking place before this effect is played?</param>
-        /// <returns>Whether the vibration effect could be played, not if it was successful in playing.</returns>
-        public static bool VibrateComposition(VibrationComposition.Primitives[] primitives, float[] scales = null, int[] delays = null, bool cancel = false)
-        {
-            if (LoggingAllEnabled) // don't want to call string.join if avoidable
-            {
-                Log($"{nameof(VibrateComposition)} called with {nameof(primitives)}: [{string.Join(", ", primitives)}]\n" +
-                    $"{nameof(scales)}: [{string.Join(", ", scales)}]\n" +
-                    $"{nameof(delays)}: [{string.Join(", ", delays)}]\n" +
-                    $"{nameof(cancel)}: {cancel}");
-            }
-
-            if (cancel && VibrateCancel() == false) return false;
-            using VibrationEffect effect = new(primitives, scales, delays);
-            return DefaultVibrator.Vibrate(effect);
-        }
-
-        /// <summary>
-        /// Attempts to vibrate the given effect.
-        /// </summary>
-        /// <param name="effect">The effect you want to vibrate.</param>
-        /// <param name="cancel">Do you want to cancel any current vibrations taking place before this effect is played?</param>
-        /// <returns>Whether the vibration effect could be played, not if it was successful in playing.</returns>
-        public static bool VibrateEffect(VibrationEffect effect, VibrationAttributes attribute = null, bool cancel = false)
-        {
-            Log($"{nameof(VibrateEffect)} called with {nameof(cancel)}: {cancel}");
-            
-            if (cancel && VibrateCancel() == false) return false;
-
-            if (attribute != null)
-                return DefaultVibrator.Vibrate(effect, attribute);
-            else
-                return DefaultVibrator.Vibrate(effect);
-        }
-
-        public static bool VibrateCombinedEffect(CombinedVibration combinedVibration, VibrationAttributes attributes = null, bool cancel = false)
-        {
-            Log($"{nameof(VibrateCombinedEffect)} called with {nameof(cancel)}: {cancel}");
-            if (cancel && VibrateCancel() == false) return false;
-            VibratorManager.Vibrate(combinedVibration, attributes);
-            return true;
-        }
-
-        /// <summary>
-        /// Cancel the playback of any current vibration taking place on the device.
-        /// </summary>
-        /// <returns>Whether the cancel could be done, not if it was successful.</returns>
-        public static bool VibrateCancel()
-        {
-            Log($"{nameof(VibrateCancel)} called");
-            if (NoVibrationSupport) return false;
-            DefaultVibrator.Cancel();
-            return true;
-        }
-
+        // TODO
         public static TEnum[] ConvertToEnumArray<TEnum>(int[] values) where TEnum : Enum
         {
             TEnum[] enumArray = new TEnum[values.Length];
@@ -273,15 +156,25 @@ namespace Vibes.Android
             PrintSupportDictionary(VibrationComposition.PrimitiveSupport);
         }
 
+        /// <summary>
+        /// Creates a default dictionary to use when there you can't get support from the device.
+        /// </summary>
+        /// <typeparam name="TKey">The Enums you want to turn into a dictionary.</typeparam>
+        /// <typeparam name="TValue">The type of value you want for dictionary keys to be.</typeparam>
+        /// <param name="value">The default value all keys will be assigned.</param>
+        /// <returns>A dictionary with all the Enums assigned the same value.</returns>
         internal static Dictionary<TKey, TValue> CreateDefaultSupportDictionary<TKey, TValue>(TValue value) where TKey : Enum
         {
             Array keys = Enum.GetValues(typeof(TKey));
             Dictionary<TKey, TValue> support = new(keys.Length);
             foreach (TKey key in keys)
-                support.Add(key, value);
+                support[key] = value; // some keys share the same constant, thanks android
             return support;
         }
 
+        /// <summary>
+        /// Creates a dictionary that reports whether each Enum value is supported by the device by comparing the Enums API support level to the device's reported API level.
+        /// </summary>
         internal static Dictionary<TKey, bool> CreateSupportDictionary<TKey>(Dictionary<TKey, int> apiSupport) where TKey : Enum
         {
             Dictionary<TKey, bool> support = new(apiSupport.Count);
@@ -289,23 +182,22 @@ namespace Vibes.Android
                 support.Add(item.Key, item.Value <= AndroidVersion);
             return support;
         }
-
+        
         /// <summary>
-        /// Creates a Dictionary of <TKey, TValue> by calling methodName with TKey and parsing it's TReturn into TValue
+        /// Creates a Dictionary of &lt;TKey, TValue&gt; by calling methodName on Android with TKey and parsing it's TReturn into TValue.
         /// </summary>
         /// <typeparam name="TKey">The Enum that will be converted into integers and used for methodName.</typeparam>
-        /// <typeparam name="TValue">The desired dictionary's value.</typeparam>
-        /// <typeparam name="TReturn">The type of value the Android Java methodName you are calling will return as an array.</typeparam>
+        /// <typeparam name="TValue">The desired dictionary's value type.</typeparam>
+        /// <typeparam name="TReturn">The value type that the Android Java methodName you are calling will return as an array.</typeparam>
         /// <param name="methodName">The Android Java method you want to call.</param>
         internal static Dictionary<TKey, TValue> GetSupportDictionary<TKey, TValue, TReturn>(string methodName) where TKey : Enum
         {
             // create arrays of each effect and their corresponding IDs
             Array effectsArray = Enum.GetValues(typeof(TKey));
-            TKey[] effects = effectsArray as TKey[];
             int[] ids = effectsArray.Cast<int>().ToArray();
 
             // get support for each effect
-            TValue[] supportResult;
+            TValue[] supportResult = null;
             if (typeof(TValue) == typeof(TReturn))
             {
                 supportResult = DefaultVibrator.VibratorObject.Call<TValue[]>(methodName, ids);
@@ -313,20 +205,40 @@ namespace Vibes.Android
             else
             {
                 TReturn[] result = DefaultVibrator.VibratorObject.Call<TReturn[]>(methodName, ids);
-                supportResult = result.Select(x => (TValue)Enum.ToObject(typeof(TValue), x)).ToArray();
+                if (result != null)
+                    supportResult = result.Select(x => (TValue)Enum.ToObject(typeof(TValue), x)).ToArray();
             }
 
+            if (supportResult == null || supportResult.Length != ids.Length)
+            {
+                Debug.LogError($"The returned support result from the Android device from the " +
+                    $"method name of \"{methodName}\" did not match the length of it's input.");
+
+                supportResult = new TValue[effectsArray.Length];
+                TValue defaultResult = (TValue)Enum.ToObject(typeof(TValue), 0);
+                Array.Fill(supportResult, defaultResult);
+            }
+
+            TKey[] effects = effectsArray as TKey[];
             Dictionary<TKey, TValue> support = new(effects.Length);
             for (int i = 0; i < effects.Length; i++)
                 support.Add(effects[i], supportResult[i]);
             return support;
         }
 
+        /// <summary>
+        /// Makes sure that the given pattern not null or empty, the amplitudes length matches up, and the repeat index is within bounds.
+        /// </summary>
         internal static bool ValidatePattern(long[] pattern, int[] amplitudes, int repeatIndex)
         {
-            if (pattern.Length == 0 || (amplitudes != null && amplitudes.Length != pattern.Length))
+            if (pattern == null || pattern.Length == 0)
             {
-                Log($"The length of {nameof(pattern)} \'{pattern.Length}\' is 0, or does not equal the length of {nameof(amplitudes)} \'{amplitudes.Length}\'.", LogLevel.Error);
+                Log($"The given {nameof(pattern)} was null or empty.", LogLevel.Error);
+                return false;
+            }
+            if (amplitudes != null && amplitudes.Length != pattern.Length)
+            {
+                Log($"The length of {nameof(pattern)} \'{pattern.Length}\' does not equal the length of {nameof(amplitudes)} \'{amplitudes.Length}\'.", LogLevel.Error);
                 return false;
             }
             if (repeatIndex < -1 || repeatIndex >= pattern.Length)
@@ -356,15 +268,14 @@ namespace Vibes.Android
             CombinedVibration.Init();
 
             if (DefaultVibrator == null)
+            {
+                DefaultVibrator = new Vibrator(null);
                 Vibrators = Array.AsReadOnly(new Vibrator[] { });
+            }
             else
+            {
                 Vibrators ??= Array.AsReadOnly(new Vibrator[] { DefaultVibrator });
+            }
         }
-    }
-
-    public interface ISupported
-    {
-        public static bool Supported { get; }
-        public bool IsEmpty { get; }
     }
 }

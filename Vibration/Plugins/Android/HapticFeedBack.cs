@@ -9,17 +9,19 @@ namespace Vibes.Android
 {
     /// <summary>
     /// A static class that controls all haptics occurring on the app's Android view.
+    /// <para/><inheritdoc cref="APIRequirement"/>
     /// <para/><see href="https://developer.android.com/develop/ui/views/haptics/haptic-feedback">Android Docs</see>
     /// </summary>
     public static class HapticFeedback
     {
+        /// <summary>Available from <see cref="AndroidVersion">API Level</see> 3 and onwards.</summary>
         public const int APIRequirement = 3;
         private const string hapticFeedbackMethod = "performHapticFeedback";
         private static AndroidJavaObject mUnityPlayer;
 
         public static bool Supported { get; private set; }
 
-        private static bool NoSupport
+        private static bool NotSupported
         {
             get
             {
@@ -31,7 +33,7 @@ namespace Vibes.Android
 
         /// <summary>
         /// Constants to be used to perform haptic feedback effects.
-        /// Check the property <see cref="HapticSupport"/> for the support of each Haptic.
+        /// <br/>Check the property <see cref="HapticSupport"/> for the device's support of each one, or check <see cref="HapticAPISupport"/> for API level support.
         /// <para/><see href="https://developer.android.com/reference/android/view/HapticFeedbackConstants">Android Docs</see>
         /// </summary>
         public enum Haptic
@@ -96,15 +98,22 @@ namespace Vibes.Android
         }
 
         /// <summary>
-        /// The support status of each <see cref="Haptic">Haptic</see> as determined by API support and device vibration support.
-        /// <para/>Warning: A device's own support varies and there's no way to determine if full support exists.
+        /// The API support level of each <see cref="Haptic"/>. For reference only.
+        /// <para/>Use <see cref="HapticSupport"/> for to check for device support.
+        /// </summary>
+        public static ReadOnlyDictionary<Haptic, int> HapticAPISupport { get; private set; }
+
+        /// <summary>
+        /// The support status of each <see cref="Haptic"/>. Determined by if the device <see cref="CanVibrate">can vibrate</see>,
+        /// and by comparing the devices <see cref="AndroidVersion">API Level</see> with the <see cref="HapticAPISupport"/> table.
+        /// <para/>Warning: A device's own support for each individual haptic varies and there's no way to determine if full support exists.
         /// </summary>
         public static ReadOnlyDictionary<Haptic, bool> HapticSupport { get; private set; }
 
         /// <summary>
         /// What the user has currently set vibration to in their device settings.
-        /// It can possibly change mid app usage. You can try to update this value by calling CheckHapticFeedbackChange().
-        /// <para/>Warning: From API 33+ we can't access this setting, and as a result it will be marked as <see cref="SupportStatus.UNKNOWN"/> from 33+. 
+        /// It can possibly change mid app usage. You can try to update this value by calling <see cref="CheckHapticFeedbackChange"/>.
+        /// <para/>Warning: From <see cref="AndroidVersion">API Level</see> 33+ we can't access this setting, and as a result it will be marked as <see cref="SupportStatus.UNKNOWN"/> from 33+. 
         /// It's best to treat it as disabled if you want to manage vibrations yourself.
         /// </summary>
         public static SupportStatus HapticStatus { get; private set; } = SupportStatus.NO;
@@ -115,7 +124,7 @@ namespace Vibes.Android
             { Haptic.LONG_PRESS, 3 },
             { Haptic.VIRTUAL_KEY, 5 },
             { Haptic.KEYBOARD_TAP, 8 },
-            { Haptic.KEYBOARD_PRESS, 27 },
+            // { Haptic.KEYBOARD_PRESS, 27 }, shares the same constant value (3) as KEYBOARD_TAP
             { Haptic.CLOCK_TICK, 21 },
             { Haptic.CONTEXT_CLICK, 23 },
             { Haptic.KEYBOARD_RELEASE, 27 },
@@ -136,6 +145,7 @@ namespace Vibes.Android
 
         internal static void Init()
         {
+            HapticAPISupport = new(hapticFeedbackAPISupport);
             Supported = AndroidVersion >= APIRequirement && CanVibrate;
             if (!Supported)
             {
@@ -157,12 +167,12 @@ namespace Vibes.Android
         {
             get
             {
-                if (NoSupport) return false;
+                if (NotSupported) return false;
                 return mUnityPlayer.Get<bool>("hapticFeedbackEnabled");
             }
             set
             {
-                if (NoSupport) return;
+                if (NotSupported) return;
                 mUnityPlayer.Set("hapticFeedbackEnabled", value);
             }
         }
@@ -175,8 +185,11 @@ namespace Vibes.Android
         public static SupportStatus CheckHapticFeedbackChange()
         {
             SupportStatus oldHapticStatus = HapticStatus;
-            if (NoSupport) return HapticStatus; // by default it's set to: No
-            if (AndroidVersion >= 33)
+            if (NotSupported)
+            {
+                HapticStatus = SupportStatus.NO;
+            }
+            else if (AndroidVersion >= 33)
             {
                 // According to the Android docs: "User settings are applied automatically by the service and should not be applied by individual apps."
                 // So we can't tell if haptics are enabled and we can't change it, best to treat it as disabled if you want to manage things yourself
@@ -203,17 +216,11 @@ namespace Vibes.Android
         /// <param name="flag">An optional flag to override certain Android focusing restrictions. Some flags are not available at certain API levels.</param>
         /// <param name="cancel">Do you want to cancel any current vibrations taking place before this effect is played?</param>
         /// <returns>Whether the haptic feedback could be played.</returns>
-        public static bool Vibrate(Haptic haptic, Flag flag = Flag.NONE, bool cancel = false)
+        public static bool Vibrate(Haptic haptic, Flag flag = Flag.NONE)
         {
-            Log($"{nameof(Vibrate)} called with {nameof(haptic)}: {haptic}, {nameof(flag)}: {flag}, and {nameof(cancel)}: {cancel}");
+            Log($"{nameof(Vibrate)} called with {nameof(haptic)}: {haptic} and {nameof(flag)}: {flag}");
 
-            if (cancel && VibrateCancel() == false) return false;
-            if (!Supported)
-            {
-                Log("This device has no support for Haptics Effects", LogLevel.Warning);
-                return false;
-            }
-
+            if (NotSupported) return false;
             if (!HapticSupport[haptic])
             {
                 Log($"This device has no support for the given {nameof(haptic)}: {haptic}", LogLevel.Error);
@@ -224,16 +231,15 @@ namespace Vibes.Android
             if (flag == Flag.IGNORE_GLOBAL_SETTING && AndroidVersion >= 33)
             {
                 Log($"This device has no support for the given {nameof(Flag)} of {flag} as its API is 33+," +
-                    $" it will be set to the default of {Flag.NONE}", LogLevel.Warning);
+                    $" it will be set to the default of {nameof(Flag.NONE)}", LogLevel.Warning);
                 flag = Flag.NONE;
             }
 #pragma warning restore CS0618 // Type or member is obsolete
 
-            bool result;
-            if (flag == Flag.NONE)
-                result = mUnityPlayer.Call<bool>(hapticFeedbackMethod, (int)haptic);
-            else
-                result = mUnityPlayer.Call<bool>(hapticFeedbackMethod, (int)haptic, (int)flag);
+            bool result = flag == Flag.NONE ?
+                mUnityPlayer.Call<bool>(hapticFeedbackMethod, (int)haptic) :
+                mUnityPlayer.Call<bool>(hapticFeedbackMethod, (int)haptic, (int)flag);
+
             Log($"{nameof(Vibrate)} finished with the result of: {result}");
             return result;
         }

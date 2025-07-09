@@ -10,13 +10,13 @@ namespace Vibes.Android
     /// A class that operates a designated vibrator on the device.
     /// <para/><see href="https://developer.android.com/reference/android/os/Vibrator">Android Docs</see>
     /// </summary>
-    public class Vibrator : ISupported //, IDisposable
+    public class Vibrator
     {
         // the api requirement for this is 1
         public static bool Supported => CanVibrate;
 
         /// <summary>
-        /// By default this will be 0, but from API level 31 onwards the device sets it.  
+        /// By default this will be 0, but from <see cref="AndroidVersion">API level</see> 31 onwards the device sets it.  
         /// </summary>
         public readonly int id;
         internal AndroidJavaObject VibratorObject { get; private set; }
@@ -24,6 +24,7 @@ namespace Vibes.Android
 
         internal Vibrator(AndroidJavaObject vibratorObject)
         {
+            if (vibratorObject == null) return;
             VibratorObject = vibratorObject;
             id = AndroidVersion < 31 ? 0 : vibratorObject.Call<int>("getId");
         }
@@ -32,7 +33,8 @@ namespace Vibes.Android
         /// Query whether the vibrator natively supports the given effects.
         /// <para/><see href="https://developer.android.com/reference/android/os/Vibrator#areEffectsSupported(int[])">Android Docs</see>
         /// </summary>
-        /// <returns>Null if no vibration can happen, or if the method is not supported, or if the input was null</returns>
+        /// <returns>If successful, the support status of each predefined effect.
+        /// <br/>Null if no vibration can happen, or if the method is not supported, or if the input was null</returns>
         public SupportStatus[] AreEffectsSupported(VibrationEffect.Predefined[] predefinedEffects)
         {
             if (NoVibrationSupport) return null;
@@ -55,7 +57,8 @@ namespace Vibes.Android
         /// Query whether the vibrator supports the given primitives.
         /// <para/><see href="https://developer.android.com/reference/android/os/Vibrator#arePrimitivesSupported(int[])">Android Docs</see>
         /// </summary>
-        /// <returns>Null if no vibration can happen, or if the method is not supported, or if the input was null</returns>
+        /// <returns>If successful, the support status of each primitive.
+        /// <br/>Null if no vibration can happen, or if the method is not supported, or if the input was null</returns>
         public bool[] ArePrimitivesSupported(VibrationComposition.Primitives[] primitives)
         {
             if (NoVibrationSupport) return null;
@@ -90,7 +93,7 @@ namespace Vibes.Android
         /// <para/><see href="https://developer.android.com/reference/android/os/Vibrator#getPrimitiveDurations(int[])">Android Docs</see>
         /// </summary>
         /// <returns>The value at a given index will contain the duration in milliseconds of the effect at the same index in the querying array.
-        /// The duration will be positive for primitives that are supported and zero for the unsupported ones, in correspondence with ArePrimitivesSupported().</returns>
+        /// <br/>The duration will be positive for primitives that are supported and zero for the unsupported ones, in correspondence with <see cref="ArePrimitivesSupported"/>.</returns>
         public int[] GetPrimitiveDurations(VibrationComposition.Primitives[] primitives)
         {
             if (NoVibrationSupport) return null;
@@ -199,14 +202,14 @@ namespace Vibes.Android
 
         /// <summary>
         /// Vibrate with a given effect. The app should be in the foreground for the vibration to happen.
-        /// From API level 30 onwards, background apps should specify a ringtone, notification or alarm usage in order to vibrate.
+        /// From <see href="AndroidVersion">API level</see> 30 onwards, background apps should specify a ringtone, notification or alarm usage in order to vibrate.
         /// <para/><see href="https://developer.android.com/reference/android/os/Vibrator#vibrate(android.os.VibrationEffect,%20android.os.VibrationAttributes)">Android Docs</see>
         /// </summary>
         /// <param name="attributes">Requires API level 30</param>
         /// <returns>Whether the vibration could be played, not if it was successful in playing.</returns>
         public bool Vibrate(VibrationEffect effect, VibrationAttributes attributes = null)
         {
-            if (NoVibrationSupport || VibrationEffect.NoSupport) return false;
+            if (NoVibrationSupport || VibrationEffect.NotSupported) return false;
 
             if (effect == null || effect.IsEmpty)
             {
@@ -216,8 +219,10 @@ namespace Vibes.Android
 
             if (attributes != null)
             {
-                if (VibrationAttributes.NoSupport)
+                if (VibrationAttributes.NotSupported)
+                {
                     attributes = null;
+                }
                 else if (attributes.IsEmpty)
                 {
                     Log($"The given {nameof(attributes)} is empty", LogLevel.Warning);
@@ -232,7 +237,7 @@ namespace Vibes.Android
             return true;
         }
 
-        // should not be public
+        // This should never be public!
         internal void Dispose()
         {
             VibratorObject?.Dispose();

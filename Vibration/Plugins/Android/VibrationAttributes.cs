@@ -8,15 +8,17 @@ using static Vibes.Android.VibrationManager;
 namespace Vibes.Android
 {
     /// <summary>
-    /// Encapsulates a collection of attributes describing information about a vibration.
+    /// Encapsulates a collection of attributes describing information about a <see cref="VibrationEffect"/>.
+    /// <para/><inheritdoc cref="APIRequirement"/>
     /// <para/><see href="https://developer.android.com/reference/android/os/VibrationAttributes">Android Docs</see>
     /// </summary>
-    public class VibrationAttributes : IDisposable, ISupported
+    public class VibrationAttributes : IDisposable
     {
+        /// <summary>Available from <see cref="AndroidVersion">API Level</see> 30 and onwards.</summary>
         public const int APIRequirement = 30;
         public static bool Supported { get; private set; }
 
-        internal static bool NoSupport
+        internal static bool NotSupported
         {
             get
             {
@@ -29,7 +31,8 @@ namespace Vibes.Android
         private static AndroidJavaClass vibrationAttributeClass, vibrationAttributesBuilderClass;
 
         /// <summary>
-        /// Descriptors for Vibrations. Check the property <see cref="AttributesSupport"/> for the support of each Attribute.
+        /// Descriptors for Vibrations.
+        /// <br/>Check the property <see cref="AttributesSupport"/> for the device's support of each one, or check <see cref="AttributesAPISupport"/> for API level support.
         /// <para/><see href="https://developer.android.com/reference/android/os/VibrationAttributes#constants_1">Android Docs</see>
         /// </summary>
         public enum Attributes
@@ -88,6 +91,16 @@ namespace Vibes.Android
             BYPASS_USER_VIBRATION_INTENSITY_SCALE = 1 << 4
         }
 
+        /// <summary>
+        /// The API support level of each <see cref="Attributes"/>. For reference only.
+        /// <para/>Use <see cref="AttributesSupport"/> for to check for device support.
+        /// </summary>
+        public static ReadOnlyDictionary<Attributes, int> AttributesAPISupport { get; private set; }
+
+        /// <summary>
+        /// The support status of each <see cref="Attributes"/>. Determined by if the device <see cref="CanVibrate">can vibrate</see>,
+        /// and by comparing the devices <see cref="AndroidVersion">API Level</see> with the <see cref="AttributesAPISupport"/> table.
+        /// </summary>
         public static ReadOnlyDictionary<Attributes, bool> AttributesSupport { get; private set; }
 
         private static readonly Dictionary<Attributes, int> attributesAPISupport = new()
@@ -106,7 +119,7 @@ namespace Vibes.Android
             { Attributes.USAGE_PHYSICAL_EMULATION, 30 },
             { Attributes.USAGE_RINGTONE, 30 },
             { Attributes.USAGE_TOUCH, 30 },
-            { Attributes.USAGE_UNKNOWN, 30 }
+            // { Attributes.USAGE_UNKNOWN, 30 } // shares the same constant value (0) as USAGE_CLASS_UNKNOWN
         };
 
         internal AndroidJavaObject Attribute { get; private set; }
@@ -116,12 +129,9 @@ namespace Vibes.Android
         {
             get
             {
-                if (Attribute == null)
-                {
+                if (IsEmpty)
                     Log($"The {nameof(Attribute)} is empty.", LogLevel.Error);
-                    return true;
-                }
-                return false;
+                return IsEmpty;
             }
         }
 
@@ -141,11 +151,11 @@ namespace Vibes.Android
         }
 
         /// <summary>
-        /// Creates a new VibrationAttributes object with the given attribute.
+        /// Creates a new <see cref="VibrationAttributes"/> object with the given <see cref="Attributes"/>.
         /// </summary>
         public VibrationAttributes(Attributes attribute)
         {
-            if (NoSupport) return;
+            if (NotSupported) return;
             if (AttributesSupport[attribute] == false)
             {
                 Log($"There is no support for the given {nameof(attribute)}: {attribute}", LogLevel.Error);
@@ -171,33 +181,33 @@ namespace Vibes.Android
         }
 
         /// <summary>
-        /// Return the flags.
+        /// Return a combination of the set <see cref="Flags"/>.
         /// <para/><see href="https://developer.android.com/reference/android/os/VibrationAttributes#getFlags()">Android Docs</see>
         /// </summary>
-        /// <returns>A combined (bit) mask of all flags. Value is either 0 or a combination of FLAGs.</returns>
+        /// <returns>A combined (bit) mask of all <see cref="Flags"/>. Value is either 0 or a combination of <see cref="Flags"/>.</returns>
         public int GetFlags()
         {
-            if (NoSupport || NoAttribute) return 0;
+            if (NotSupported || NoAttribute) return 0;
             return Attribute.Call<int>("getFlags");
         }
 
         /// <summary>
-        /// Return the vibration usage Attribute.
+        /// Return the vibration usage <see cref="Attributes"/>.
         /// <para/><see href="https://developer.android.com/reference/android/os/VibrationAttributes#getUsage()">Android Docs</see>
         /// </summary>
         public Attributes GetUsage()
         {
-            if (NoSupport || NoAttribute) return 0;
+            if (NotSupported || NoAttribute) return 0;
             return (Attributes)Attribute.Call<int>("getUsage");
         }
 
         /// <summary>
-        /// Return the vibration usage class Attribute.
+        /// Return the vibration usage class <see cref="Attributes"/>.
         /// <para/><see href="https://developer.android.com/reference/android/os/VibrationAttributes#getUsageClass()">Android Docs</see>
         /// </summary>
         public Attributes GetUsageClass()
         {
-            if (NoSupport || NoAttribute) return 0;
+            if (NotSupported || NoAttribute) return 0;
             return (Attributes)Attribute.Call<int>("getUsageClass");
         }
 
@@ -208,7 +218,7 @@ namespace Vibes.Android
         }
 
         /// <summary>
-        /// Builder class for VibrationAttributes objects. By default, all information is set to UNKNOWN.
+        /// Builder class for <see cref="VibrationAttributes"/> objects. By default, the <see cref="Attributes"/> is set to <see cref="Attributes.USAGE_UNKNOWN"/>.
         /// <para/><see href="https://developer.android.com/reference/android/os/VibrationAttributes.Builder">Android Docs</see>
         /// </summary>
         public class Builder : IDisposable
@@ -231,22 +241,22 @@ namespace Vibes.Android
             }
 
             /// <summary>
-            /// Constructs a new Builder with the defaults.
+            /// Constructs a new <see cref="Builder"/> with the defaults of <see cref="Attributes.USAGE_UNKNOWN"/>.
             /// <para/><see href="https://developer.android.com/reference/android/os/VibrationAttributes.Builder#Builder()">Android Docs</see>
             /// </summary>
             public Builder()
             {
-                if (NoSupport) return;
+                if (NotSupported) return;
                 builderObject = vibrationAttributesBuilderClass.Call<AndroidJavaObject>("Builder");
             }
 
             /// <summary>
-            /// Constructs a new Builder from a given VibrationAttributes.
+            /// Constructs a new <see cref="Builder"/> from a given <see cref="VibrationAttributes"/>.
             /// <para/><see href="https://developer.android.com/reference/android/os/VibrationAttributes.Builder#Builder(android.os.VibrationAttributes)">Android Docs</see>
             /// </summary>
             public Builder(VibrationAttributes vibrationAttribute)
             {
-                if (NoSupport) return;
+                if (NotSupported) return;
                 if (vibrationAttribute == null || vibrationAttribute.IsEmpty)
                 {
                     Log($"The given {nameof(vibrationAttribute)} is null or it's empty", LogLevel.Error);
@@ -256,7 +266,7 @@ namespace Vibes.Android
             }
 
             /// <summary>
-            /// Combines all of the attributes that have been set and returns a new VibrationAttributes object.
+            /// Combines all of the <see cref="Attributes"/> that have been set and returns a new <see cref="VibrationAttributes"/> object.
             /// <para/><see href="https://developer.android.com/reference/android/os/VibrationAttributes.Builder#build()">Android Docs</see>
             /// </summary>
             public VibrationAttributes Build()
@@ -282,35 +292,36 @@ namespace Vibes.Android
 
             private AndroidJavaObject BuildJavaObject()
             {
-                if (NoSupport || NoBuilderObject) return null;
+                if (NotSupported || NoBuilderObject) return null;
                 return builderObject.Call<AndroidJavaObject>("build");
             }
 
             /// <summary>
-            /// Sets only the flags specified in the bitmask, leaving the other supported flag values unchanged in the builder.
+            /// Sets only the <see cref="Flags"/> specified in the bitmask, leaving the other supported <see cref="Flags"/> unchanged in the <see cref="Builder"/>.
             /// <para/><see href="https://developer.android.com/reference/android/os/VibrationAttributes.Builder#setFlags(int,%20int)">Android Docs</see>
             /// </summary>
-            /// <param name="mask">Bit range that should be changed, use <see cref="int.MaxValue"/> if you want to reset all flags.</param>
-            /// <returns>True if could set the flags, false if there was an error.</returns>
-            public bool SetFlags(Flags[] flags, int mask)
+            /// <param name="bitmask">Bit range that should be changed, use <see cref="int.MaxValue"/> if you want to reset all flags.</param>
+            /// <returns>True if could set them, false if there was an error.</returns>
+            public bool SetFlags(Flags[] flags, int bitmask)
             {
-                if (NoSupport || NoBuilderObject) return false;
+                if (NotSupported || NoBuilderObject) return false;
 
                 int flagCombo = 0;
                 foreach (Flags f in flags)
                     flagCombo |= (int)f;
-                builderObject.Call("setFlags", flagCombo, mask);
+                // TODO: Check if this works as expected
+                builderObject.Call("setFlags", flagCombo, bitmask);
                 return true;
             }
 
             /// <summary>
-            /// Sets the attribute describing the type of the corresponding vibration.
+            /// Sets the <see cref="Attributes"/> describing the type of the corresponding <see cref="VibrationEffect"/>.
             /// <para/><see href="https://developer.android.com/reference/android/os/VibrationAttributes.Builder#setFlags(int,%20int)">Android Docs</see>
             /// </summary>
-            /// <returns>True if could set the attribute, false if there was an error.</returns>
+            /// <returns>True if could set, false if there was an error.</returns>
             public bool SetUsage(Attributes attribute)
             {
-                if (NoSupport || NoBuilderObject) return false;
+                if (NotSupported || NoBuilderObject) return false;
                 if (AttributesSupport[attribute] == false)
                 {
                     Log($"There is no support for the given {nameof(attribute)}: {attribute}", LogLevel.Error);

@@ -6,10 +6,12 @@ namespace Vibes.Android
 {
     /// <summary>
     /// Provides access to <see cref="Vibrator"/>s on the device, as well as the ability to run them in a synchronized fashion.
+    /// <para/><inheritdoc cref="APIRequirement"/>
     /// <para/><see href="https://developer.android.com/reference/android/os/VibratorManager">Android Docs</see>
     /// </summary>
     public static class VibratorManager
     {
+        /// <summary>Available from <see cref="AndroidVersion">API Level</see> 31 and onwards.</summary>
         public const int APIRequirement = 31;
 
         public static bool Supported { get; private set; }
@@ -34,7 +36,7 @@ namespace Vibes.Android
         }
 
         /// <summary>
-        /// Turn all the vibrators off.
+        /// Turn all the <see cref="Vibrators"/> off.
         /// <para/><see href="https://developer.android.com/reference/android/os/VibratorManager#cancel()">Android Docs</see>
         /// </summary>
         /// <returns>True if could complete call, false if not.</returns>
@@ -57,7 +59,7 @@ namespace Vibes.Android
         }
 
         /// <summary>
-        /// Retrieve a single vibrator by id.
+        /// Retrieve a single Vibrator by id.
         /// <para/><see href="https://developer.android.com/reference/android/os/VibratorManager#getVibrator(int)">Android Docs</see>
         /// </summary>
         /// <returns>Corresponding Vibrator if could complete call, null if not.</returns>
@@ -69,7 +71,7 @@ namespace Vibes.Android
         }
 
         /// <summary>
-        /// List all available vibrator ids, returning a possible empty list.
+        /// List all available Vibrator ids, returning a possible empty list.
         /// <para/><see href="https://developer.android.com/reference/android/os/VibratorManager#getVibratorIds()">Android Docs</see>
         /// </summary>
         /// <returns>An array of Vibrator ids if could complete call, null if not.</returns>
@@ -80,8 +82,8 @@ namespace Vibes.Android
         }
 
         /// <summary>
-        /// Vibrate with a given combination of effects.<br/>
-        /// The app should be in foreground for the vibration to happen.
+        /// Vibrate with a given combination of effects.
+        /// <br/>The app should be in foreground for the vibration to happen.
         /// Background apps should specify a ringtone, notification or alarm usage in order to vibrate.
         /// <para/><see href="https://developer.android.com/reference/android/os/VibratorManager#vibrate(android.os.CombinedVibration)">Android Docs</see>
         /// </summary>

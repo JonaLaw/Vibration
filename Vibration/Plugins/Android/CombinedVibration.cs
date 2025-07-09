@@ -7,13 +7,15 @@ namespace Vibes.Android
 {
     /// <summary>
     /// A combination of <see cref="VibrationEffect"/>s to be performed by one or more <see cref="Vibrator"/>s.
+    /// <para/><inheritdoc cref="APIRequirement"/>
     /// <para/><see href="https://developer.android.com/reference/android/os/CombinedVibration">Android Docs</see>
     /// </summary>
-    public class CombinedVibration : IDisposable, ISupported
+    public class CombinedVibration : IDisposable
     {
+        /// <summary>Available from <see cref="AndroidVersion">API Level</see> 31 and onwards.</summary>
         public const int APIRequirement = 31;
         public static bool Supported { get; private set; }
-        internal static bool NoSupport
+        internal static bool NotSupported
         {
             get
             {
@@ -41,24 +43,13 @@ namespace Vibes.Android
         /// </summary>
         public CombinedVibration(VibrationEffect effect)
         {
-            if (NoSupport) return;
+            if (NotSupported) return;
             if (effect == null || effect.IsEmpty)
             {
                 Log($"The given {nameof(effect)} is either null or is empty.", LogLevel.Error);
                 return;
             }
             Combination = combinedVibrationClass.Call<AndroidJavaObject>("createParallel", effect.Effect);
-        }
-
-        /// <summary>
-        /// ParallelCombination.Combine() uses this to generate a CombinedVibration
-        /// </summary>
-        private CombinedVibration(AndroidJavaObject combination)
-        {
-            if (NoSupport) return;
-            if (combination == null)
-                Log($"The given {nameof(combination)} is null.", LogLevel.Error);
-            Combination = combination;
         }
 
         public void Dispose()
@@ -68,10 +59,21 @@ namespace Vibes.Android
         }
 
         /// <summary>
+        /// <see cref="ParallelCombination.Combine"/> uses this to generate a <see cref="CombinedVibration"/>
+        /// </summary>
+        private CombinedVibration(AndroidJavaObject combination)
+        {
+            if (NotSupported) return;
+            if (combination == null)
+                Log($"The given {nameof(combination)} is null.", LogLevel.Error);
+            Combination = combination;
+        }
+
+        /// <summary>
         /// A combination of <see cref="VibrationEffect"/>s that should be played in multiple <see cref="Vibrator"/>s in parallel.
         /// <para/><see href="https://developer.android.com/reference/android/os/CombinedVibration.ParallelCombination">Android Docs</see>
         /// </summary>
-        public class ParallelCombination : IDisposable, ISupported
+        public class ParallelCombination : IDisposable
         {
             private AndroidJavaObject parallel;
             public bool IsEmpty => parallel == null;
@@ -80,12 +82,9 @@ namespace Vibes.Android
             {
                 get
                 {
-                    if (parallel == null)
-                    {
+                    if (IsEmpty)
                         Log($"The {nameof(parallel)} is null.", LogLevel.Error);
-                        return true;
-                    }
-                    return false;
+                    return IsEmpty;
                 }
             }
 
@@ -96,7 +95,7 @@ namespace Vibes.Android
             /// </summary>
             public ParallelCombination()
             {
-                if(NoSupport) return;
+                if(NotSupported) return;
                 parallel = combinedVibrationClass.Call<AndroidJavaObject>("startParallel");
             }
 
@@ -106,13 +105,13 @@ namespace Vibes.Android
             /// </summary>
             /// <param name="vibrator">The id of the vibrator that should perform this effect.</param>
             /// <param name="effect">The effect this vibrator should play. This value cannot be null.</param>
-            /// <returns></returns>
+            /// <returns>True if able to add the effect to the vibrator, false if unable.</returns>
             public bool AddVibrator(Vibrator vibrator, VibrationEffect effect)
             {
-                if (NoSupport || NoParallel) return false;
-                if (vibrator == null)
+                if (NotSupported || NoParallel) return false;
+                if (vibrator == null || vibrator.IsEmpty)
                 {
-                    Log($"The given {nameof(vibrator)} is null.", LogLevel.Error);
+                    Log($"The given {nameof(vibrator)} is either null or it's empty.", LogLevel.Error);
                     return false;
                 }
                 if (effect == null || effect.IsEmpty)

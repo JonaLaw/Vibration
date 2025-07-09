@@ -8,16 +8,18 @@ namespace Vibes.Android
 {
     /// <summary>
     /// A combination of <see cref="Primitives"/> that are combined to be playable as a single <see cref="VibrationEffect"/>.
+    /// <para/><inheritdoc cref="APIRequirement"/>
     /// <para/><see href="https://developer.android.com/reference/android/os/VibrationEffect.Composition">Android Docs</see>
     /// </summary>
-    public class VibrationComposition : IDisposable, ISupported
+    public class VibrationComposition : IDisposable
     {
+        /// <summary>Available from <see cref="AndroidVersion">API Level</see> 30 and onwards.</summary>
         public const int APIRequirement = 30;
         private const string addPrimitiveMethod = "addPrimitive";
 
         public static bool Supported { get; private set; }
 
-        internal static bool NoSupport
+        internal static bool NotSupported
         {
             get
             {
@@ -28,19 +30,27 @@ namespace Vibes.Android
         }
 
         /// <summary>
-        /// Haptics used to create the Vibration Effect. Check <see cref="PrimitiveSupport"/> for the support of each Primitive.
+        /// Haptics used to create the <see cref="VibrationEffect"/>. Check <see cref="PrimitiveSupport"/> for the support of each Primitive.
         /// <para/><see href="https://developer.android.com/reference/android/os/VibrationEffect.Composition#constants_1">Android Docs</see>
         /// </summary>
         public enum Primitives
         {
-            CLICK = 1, // 30 API support
-            LOW_TICK = 8, // 31
-            QUICK_FALL = 6, // 30
-            QUICK_RISE = 4, // 30
-            SLOW_RISE = 5, // 30
-            SPIN = 3, // 31
-            THUD = 2, // 31
-            TICK = 7 // 30
+            /// <summary>This effect should produce a sharp, crisp click sensation.</summary>
+            CLICK = 1,
+            /// <summary>This very short low frequency effect should produce a light crisp sensation intended to be used repetitively for dynamic feedback.</summary>
+            LOW_TICK = 8,
+            /// <summary>A haptic effect that simulates quick downwards movement with gravity.</summary>
+            QUICK_FALL = 6,
+            /// <summary>A haptic effect that simulates quick upward movement against gravity.</summary>
+            QUICK_RISE = 4,
+            /// <summary>A haptic effect that simulates slow upward movement against gravity.</summary>
+            SLOW_RISE = 5,
+            /// <summary>A haptic effect that simulates spinning momentum.</summary>
+            SPIN = 3,
+            /// <summary>A haptic effect that simulates downwards movement with gravity. Often followed by extra energy of hitting and reverberation to augment physicality.</summary>
+            THUD = 2,
+            /// <summary>This very short effect should produce a light crisp sensation intended to be used repetitively for dynamic feedback.</summary>
+            TICK = 7
         }
 
         /// <summary>
@@ -51,6 +61,16 @@ namespace Vibes.Android
         private AndroidJavaObject composition;
         public bool IsEmpty => composition == null;
 
+        private bool NoComposition
+        {
+            get
+            {
+                if (IsEmpty)
+                    Log($"The {nameof(composition)} is empty.", LogLevel.Error);
+                return IsEmpty;
+            }
+        }
+
         internal static void Init()
         {
             Supported = AndroidVersion >= APIRequirement && CanVibrate;
@@ -60,6 +80,7 @@ namespace Vibes.Android
                 return;
             }
 
+            // Get the support of each Primitive from the device itself. Primitive support depends on API level and device manufacturer support.
             // https://developer.android.com/reference/android/os/Vibrator#arePrimitivesSupported(int[])
             PrimitiveSupport = new(GetSupportDictionary<Primitives, bool, bool>("arePrimitivesSupported"));
         }
@@ -67,48 +88,56 @@ namespace Vibes.Android
         // https://developer.android.com/reference/android/os/VibrationEffect#startComposition()
         public VibrationComposition()
         {
-            if (NoSupport) return;
+            if (NotSupported) return;
+            // if (VibrationEffect.vibrationEffectClass == null) TODO: add null checks?
             composition = VibrationEffect.vibrationEffectClass.CallStatic<AndroidJavaObject>("startComposition");
         }
 
         /// <summary>
-        /// Attempts to create and compose the composition effect using the given inputs.
+        /// Attempts to create a <see cref="VibrationComposition"/> and compose it into a <see cref="VibrationEffect"/> using the given inputs.
+        /// <para/><see href="https://developer.android.com/reference/android/os/VibrationEffect.Composition#addPrimitive(int,%20float,%20int)">Related Android Docs</see>
         /// </summary>
-        /// <param name="primitives">The primitives you want to add to the composition. If a primitive is not supported the entire compostion fails.</param>
-        /// <param name="scales">The scales to apply to the intensity of the primitive. Either null or -1s for default, or between 0f and 1f inclusive.</param>
+        /// <param name="primitives">The primitives you want to add to the composition.
+        /// <para/> Warning: If a primitive is not supported the entire composition fails. Check <see cref="PrimitiveSupport"/> for support.</param>
+        /// <param name="scales">The scales to apply to the intensity of the primitive.
+        /// Either null for all device default, or an array that can have values between 0f and 1f inclusive or <see cref="float.NaN"/> for default.</param>
         /// <param name="delays">The amounts of time (ms) to wait before playing the next primitive. Either null or values 0 or greater.</param>
+        /// <returns>VibrationEffect if successful in composition, null if failure.</returns>
         public static VibrationEffect CreateEffect(Primitives[] primitives, float[] scales = null, int[] delays = null)
         {
-            if (NoSupport) return null;
-            if (primitives.Length == 0)
+            if (NotSupported) return null;
+            if (primitives == null || primitives.Length == 0)
             {
-                Log($"The length of {nameof(primitives)} \'{primitives.Length}\' is 0", LogLevel.Error);
+                Log($"The given {nameof(primitives)} is either null or its length is 0", LogLevel.Error);
                 return null;
             }
             if (scales != null && primitives.Length != scales.Length)
             {
-                Log($"The length of {nameof(primitives)} \'{primitives.Length}\' does not equal the length of {nameof(scales)} \'{scales.Length}\'", LogLevel.Error);
+                Log($"The length of {nameof(scales)} \'{scales.Length}\' does not equal the length of {nameof(primitives)} \'{primitives.Length}\'", LogLevel.Error);
                 return null;
             }
             if (delays != null && primitives.Length != delays.Length)
             {
-                Log($"The length of {nameof(primitives)} \'{primitives.Length}\' does not equal the length of {nameof(delays)} \'{delays.Length}\'", LogLevel.Error);
+                Log($"The length of {nameof(delays)} \'{delays.Length}\' does not equal the length of {nameof(primitives)} \'{primitives.Length}\'", LogLevel.Error);
                 return null;
             }
 
             using VibrationComposition composition = new();
-            for (int i = 0; i < primitives.Length; i++)
+
+            if (scales == null)
             {
-                bool result;
-
-                if (scales == null)
-                    result = composition.AddPrimitive(primitives[i]);
-                else if (delays == null)
-                    result = composition.AddPrimitive(primitives[i], scales[i]);
-                else
-                    result = composition.AddPrimitive(primitives[i], scales[i], delays[i]);
-
-                if (result == false) return null;
+                for (int i = 0; i < primitives.Length; i++)
+                    if (composition.AddPrimitive(primitives[i]) == false) return null;
+            }
+            else if (delays == null)
+            {
+                for (int i = 0; i < primitives.Length; i++)
+                    if (composition.AddPrimitive(primitives[i], scales[i]) == false) return null;
+            }
+            else
+            {
+                for (int i = 0; i < primitives.Length; i++)
+                    if (composition.AddPrimitive(primitives[i], scales[i], delays[i]) == false) return null;
             }
 
             return composition.Compose();
@@ -118,24 +147,15 @@ namespace Vibes.Android
         /// Add a primitive effect to the end of the current composition.
         /// <para/><see href="https://developer.android.com/reference/android/os/VibrationEffect.Composition#addPrimitive(int,%20float,%20int)">Android Docs</see>
         /// </summary>
-        /// <param name="scale">The scale to apply to the intensity of the primitive. Value is between 0f and 1f inclusive, or -1 for device default.
-        /// Greater than 1 will be clamped, while less than 0 will be ignored.</param>
+        /// <param name="primitive">If the primitive is not supported it will not be added and false will be returned. Check <see cref="PrimitiveSupport"/> for support.</param>
+        /// <param name="scale">The scale to apply to the intensity of the primitive. Value can be between 0f and 1f inclusive, or <see cref="float.NaN"/> for device default.
+        /// Value will be clamped between 0 and 1 if not default.</param>
         /// <param name="delay">The amount of time in milliseconds to wait before playing this primitive, starting when the previous primitive finished.
-        /// Value is 0 or greater. Less than 0 will be clamped.</param>
-        /// <returns>TODO</returns>
-        public bool AddPrimitive(Primitives primitive, float scale = -1, int delay = 0)
+        /// Value can be 0 or greater. Less than 0 will be clamped.</param>
+        /// <returns>True if successful in adding to composition, false if failure</returns>
+        public bool AddPrimitive(Primitives primitive, float scale = float.NaN, int delay = 0)
         {
-            if (NoSupport) return false;
-            if (IsEmpty)
-            {
-                Log($"The {nameof(composition)} is empty.", LogLevel.Error);
-                return false;
-            }
-            if (Enum.IsDefined(typeof(Primitives), primitive) == false)
-            {
-                Log($"The given {nameof(primitive)} of {primitive} is not valid.", LogLevel.Error);
-                return false;
-            }
+            if (NotSupported || NoComposition) return false;
             if (PrimitiveSupport[primitive] == false)
             {
                 Log($"The given {nameof(primitive)} of {primitive} is reported as not supported by this device.", LogLevel.Error);
@@ -143,14 +163,15 @@ namespace Vibes.Android
                 return false;
             }
 
-            // scale can be -1 (default) or 0 to 1, can't find what the default value ends up being, anything less that 0 will be treated as -1
-            if (scale > 1) scale = 1;
-            if (delay < 0) delay = 0;
-
-            // https://developer.android.com/reference/android/os/VibrationEffect.Composition#public-methods_1
-            if (scale < 0) // use default scale, don't know what it might be
+            if (float.IsNaN(scale)) // use default scale, can't tell what it might be
+            {
                 composition.Call<AndroidJavaObject>(addPrimitiveMethod, (int)primitive);
-            else if (delay <= 0) // no delay
+                return true;
+            }
+
+            scale = Math.Clamp(scale, 0, 1);
+
+            if (delay <= 0) // no delay
                 composition.Call<AndroidJavaObject>(addPrimitiveMethod, (int)primitive, scale);
             else
                 composition.Call<AndroidJavaObject>(addPrimitiveMethod, (int)primitive, scale, delay);
@@ -159,17 +180,13 @@ namespace Vibes.Android
         }
 
         /// <summary>
-        /// Compose all of the added primitives together into a single VibrationEffect.
+        /// Compose all of the added primitives together into a single <see cref="VibrationEffect"/>.
+        /// <br/>The <see cref="VibrationComposition"/> can still be used and edited afterwards without changing previous composed effects.
         /// <para/><see href="https://developer.android.com/reference/android/os/VibrationEffect.Composition#compose()">Android Docs</see>
         /// </summary>
         public VibrationEffect Compose()
         {
-            if (NoSupport) return null;
-            if (IsEmpty)
-            {
-                Log($"The {nameof(composition)} is empty.", LogLevel.Error);
-                return null;
-            }
+            if (NotSupported || NoComposition) return null;
             AndroidJavaObject comp = composition.Call<AndroidJavaObject>("compose");
             return new VibrationEffect(comp);
         }

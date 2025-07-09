@@ -52,7 +52,7 @@ public static class Vibration
         VibrationManager.Init();
         CanVibrate = VibrationManager.CanVibrate;
 #endif
-        VibrationManager.Init();
+        // TODO: VibrationManager.Init();
         initialized = true;
     }
 
@@ -83,7 +83,7 @@ public static class Vibration
 #if UNITY_IOS
         return VibrationManager.VibratePop();
 #elif UNITY_ANDROID || UNITY_WEBGL
-        return VibrationManager.Vibrate(50);
+        return Relay.Vibrate(50);
 #else
         return false;
 #endif
@@ -99,7 +99,7 @@ public static class Vibration
 #if UNITY_IOS
         return VibrationManager.VibratePeek();
 #elif UNITY_ANDROID || UNITY_WEBGL
-        return VibrationManager.Vibrate(100);
+        return Relay.Vibrate(100);
 #else
         return false;
 #endif
@@ -115,7 +115,7 @@ public static class Vibration
 #if UNITY_IOS
         return VibrationManager.VibrateNope();
 #elif UNITY_ANDROID
-        return VibrationManager.VibratePattern(new long[] { 0, 50, 100, 50, 100, 50 });
+        return Relay.VibratePattern(new long[] { 0, 50, 100, 50, 100, 50 });
 #elif UNITY_WEBGL
         return VibrationManager.VibratePattern(new int[] { 50, 100, 50, 100, 50 });
 #else
@@ -135,7 +135,7 @@ public static class Vibration
         Log("iOS does not support vibration durations", LogLevel.Error);
         return false;
 #elif UNITY_ANDROID || UNITY_WEBGL
-        return VibrationManager.Vibrate(duration);
+        return Relay.Vibrate(duration);
 #else
         return false;
 #endif
@@ -159,7 +159,7 @@ public static class Vibration
         longs[0] = 0;
         for (int i = 0; i < pattern.Length; i++)
             longs[i + 1] = pattern[i];
-        return VibrationManager.VibratePattern(longs);
+        return Relay.VibratePattern(longs);
 #elif UNITY_WEBGL
         return VibrationManager.VibratePattern(pattern);
 #else
@@ -179,7 +179,7 @@ public static class Vibration
         Log("iOS does not support vibration Canceling", LogLevel.Error);
         return false;
 #elif UNITY_ANDROID || UNITY_WEBGL
-        return VibrationManager.VibrateCancel();
+        return Relay.VibrateCancel();
 #else
         return false;
 #endif
@@ -207,20 +207,20 @@ public static class Vibration
     [Obsolete("This method is obsolete. Call Vibes.Android.VibrationManager.Vibrate() instead.")]
     public static void VibrateAndroid(long milliseconds)
     {
-        VibrationManager.Vibrate(milliseconds);
+        Relay.Vibrate(milliseconds);
     }
 
     [Obsolete("This method is obsolete. Call Vibes.Android.VibrationManager.VibratePattern() instead.")]
     public static void VibrateAndroid(long[] pattern, int repeat)
     {
-        VibrationManager.VibratePattern(pattern, repeatIndex: repeat);
+        Relay.VibratePattern(pattern, repeatIndex: repeat);
     }
 #endif
 
     [Obsolete("This method is obsolete. Call Vibes.Android.VibrationManager.CancelVibration() instead.")]
     public static void CancelAndroid()
     {
-        VibrationManager.VibrateCancel();
+        Relay.VibrateCancel();
     }
 
     [Obsolete("This method is obsolete. Use the property CanVibrate instead.")]
